@@ -1,0 +1,23 @@
+{
+ "gazetteer": 2026,
+ "fetched_gazetteer": "2026-10-16T16:53",
+ "boundaries": 2025,
+ "fetched_boundaries": "2026-10-16T16:54",
+ "fetched_acs": "2026-10-16T16:54 FAILED",
+ "fhfa_land": "https://www.fhfa.gov/document/land-prices_2024_20_june.xlsx",
+ "fetched_fhfa_land": "2026-10-16T16:54",
+ "hpi_state_q": "https://www.fhfa.gov/hpi/download/quarterly_datasets/hpi_at_state.txt",
+ "hpi_po_monthly": "https://www.fhfa.gov/hpi/download/monthly/hpi_po_monthly_hist.xlsx",
+ "hpi_po_state_q": "https://www.fhfa.gov/hpi/download/quarterly_datasets/hpi_po_state.txt",
+ "fetched_hpi": "2026-10-16T16:54",
+ "fetched_fmr": "2026-10-16T16:55 FAILED",
+ "cbsa": "https://www2.census.gov/programs-surveys/metro-micro/geographies/reference-files/2023/delineation-files/list1_2023.xlsx",
+ "fetched_cbsa": "2026-10-16T16:55",
+ "nass": "https://www.nass.usda.gov/datasets/qs.economics_20261016.txt.gz",
+ "fetched_nass": "2026-10-16T16:57",
+ "osm": {
+  "date": "2026-10-16",
+  "states_fresh": 44
+ },
+ "fetched_osm": "2026-10-16T21:13"
+}
