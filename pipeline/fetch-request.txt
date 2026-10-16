@@ -1,0 +1,10 @@
+# Sources to fetch on the next push of this file (one per line, blank = all)
+gazetteer
+boundaries
+acs
+fhfa_land
+hpi
+fmr
+cbsa
+nass
+osm
