@@ -36,8 +36,10 @@ jobs:
           elif [ "${{ github.event_name }}" = "push" ]; then SRC="$(grep -v '^#' pipeline/fetch-request.txt | tr '\n' ' ')";
           else SRC=""; fi
           echo "Fetching: ${SRC:-everything}"
-          python pipeline/fetch.py $SRC
+          set -o pipefail
+          python pipeline/fetch.py $SRC 2>&1 | tee pipeline/raw/fetch-log.txt
       - name: Commit
+        if: always()
         run: |
           git config user.name "buildocrat-bot"
           git config user.email "actions@users.noreply.github.com"

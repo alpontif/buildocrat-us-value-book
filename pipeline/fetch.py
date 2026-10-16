@@ -430,7 +430,15 @@ out center tags qt;"""
     RUN['osm'] = {'date': datetime.date.today().isoformat(), 'states_fresh': len(fresh)}
 
 
-SOURCES = {'gazetteer': gazetteer, 'boundaries': boundaries, 'acs': acs, 'fhfa_land': fhfa_land, 'hpi': fhfa_hpi,
+# ---------------------------------------------------------------- Census Survey of Construction (cost to build, lot sizes)
+def soc():
+    for nm in ('contractpricesqft', 'soldpricesqft', 'lotsize', 'squarefeet'):
+        p = download(f'https://www.census.gov/construction/chars/xls/{nm}_cust.xls', f'soc_{nm}.xls')
+        sheets_to_csv(p, f'soc_{nm}')
+    RUN['soc'] = 'https://www.census.gov/construction/chars/current.html'
+
+
+SOURCES = {'soc': soc, 'gazetteer': gazetteer, 'boundaries': boundaries, 'acs': acs, 'fhfa_land': fhfa_land, 'hpi': fhfa_hpi,
            'fmr': hud_fmr, 'cbsa': cbsa, 'nass': nass, 'osm': osm}
 
 if __name__ == '__main__':
