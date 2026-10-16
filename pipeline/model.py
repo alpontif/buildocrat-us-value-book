@@ -387,6 +387,31 @@ if fz:
                 continue
             if vals[2]:
                 FMR_Z[z] = vals
+# HUD eGIS (ArcGIS) layout: FMR areas (metro areas by CBSA code, non-metro counties by FIPS) and ZIP-level SAFMRs
+fa = os.path.join(RAW, 'fmrgis__Fair_Market_Rents_0.csv.gz')
+if os.path.exists(fa):
+    by_cbsa_fmr = collections.defaultdict(list)
+    it = rows('fmrgis__Fair_Market_Rents_0.csv.gz'); head = next(it); H = {h: i for i, h in enumerate(head)}
+    for r in it:
+        code = r[H['FMR_CODE']]; vals = [num(r[H[f'FMR_{b}BDR']]) for b in range(5)]
+        if not vals[2]:
+            continue
+        if code.startswith('NCNTY'):
+            FMR_C[code[5:10]] = vals
+        elif code.startswith('METRO'):
+            by_cbsa_fmr[code[5:10]].append(vals)
+    for f, cb in cbsa.items():
+        if f not in FMR_C and cb['code'] in by_cbsa_fmr:
+            vs = by_cbsa_fmr[cb['code']]
+            FMR_C[f] = [stt.median([v[b] for v in vs]) for b in range(5)]
+    zz = collections.defaultdict(list)
+    it = rows('fmrgis__HUD_PDR_Small_Area_Fair_Market_Rents_1.csv.gz'); head = next(it); H = {h: i for i, h in enumerate(head)}
+    for r in it:
+        z = str(r[H['ID']]).split('.')[0].zfill(5); vals = [num(r[H[f'SAFMR_{b}BR']]) for b in range(5)]
+        if vals[2] and z != '00000':
+            zz[z].append(vals)
+    for z, vs in zz.items():
+        FMR_Z[z] = [stt.median([v[b] for v in vs if v[b]] or [0]) for b in range(5)]
 log(' HUD FMR counties', len(FMR_C), 'ZIP codes', len(FMR_Z))
 if not FMR_C:
     sys.exit('HUD Fair Market Rents missing: run python pipeline/fetch.py fmr')
@@ -435,21 +460,16 @@ if fsoc:
     # layout: a title block, then rows with a year in the first column and US, Northeast, Midwest, South, West columns
     # (median first, average after); take the latest year's median by region
     allr = list(rows(fsoc))
-    hdr = None
-    for i, r in enumerate(allr):
-        low = [str(x).lower() for x in r]
-        if any('northeast' in x for x in low) and any('west' in x for x in low):
-            hdr = (i, low); break
-    if hdr:
-        i0, low = hdr
-        idx = {'NE': next(i for i, x in enumerate(low) if 'northeast' in x), 'MW': next(i for i, x in enumerate(low) if 'midwest' in x),
-               'S': next(i for i, x in enumerate(low) if 'south' in x), 'W': next(i for i, x in enumerate(low) if x.strip() == 'west' or x.strip().startswith('west'))}
+    i0 = next((i for i, r in enumerate(allr) if any(str(x).strip().lower() == 'midwest' for x in r)), None)
+    if i0 is not None:
+        mw = next(i for i, x in enumerate(allr[i0]) if str(x).strip().lower() == 'midwest')  # first block = medians
+        idx = {'NE': mw - 1, 'MW': mw, 'S': mw + 1, 'W': mw + 2}
         for r in allr[i0 + 1:]:
-            if r and re.match(r'^\s*(19|20)\d\d', str(r[0])):
-                y = int(re.match(r'^\s*(\d{4})', str(r[0])).group(1))
+            m = re.match(r'^\s*((?:19|20)\d\d)', str(r[0]) if r else '')
+            if m:
                 vals = {k: num(r[c]) for k, c in idx.items() if c < len(r)}
-                if all(vals.values()) and (SOC_Y is None or y > SOC_Y):
-                    SOC_Y, BUILD = y, vals
+                if len(vals) == 4 and all(vals.values()):
+                    SOC_Y, BUILD = int(m.group(1)), vals
 if not BUILD:
     log(' Survey of Construction table not read; using the last known regional medians')
     BUILD, SOC_Y = {'NE': 185.0, 'MW': 150.0, 'S': 132.0, 'W': 170.0}, 2025
