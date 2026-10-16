@@ -384,8 +384,15 @@ def osm():
                 done.setdefault(r['st'], []).append(r)
     rows = []
     fresh = set()
+    t0 = time.time(); budget = float(os.environ.get('OSM_MINUTES', '90')) * 60
     for fp, st in STATES.items():
-        q = f"""[out:json][timeout:600];
+        if fp == '72':
+            continue
+        if time.time() - t0 > budget:
+            rows += [[x['st'], x['k'], x['id'], x['name'], x['type'], x['lat'], x['lng'], x['access'], x['pop']] for x in done.get(st, [])]
+            log('  time budget used; KEEPING last run for', st)
+            continue
+        q = f"""[out:json][timeout:300];
 area["ISO3166-2"="US-{st}"][admin_level=4]->.a;
 (
   nwr(area.a)["place"~"^(city|town|village|hamlet|suburb|quarter|neighbourhood|locality)$"]["name"];
@@ -395,16 +402,16 @@ area["ISO3166-2"="US-{st}"][admin_level=4]->.a;
 );
 out center tags qt;"""
         js = None
-        for k in range(6):
+        for k in range(3):
             ep = OVERPASS[k % len(OVERPASS)]
             try:
-                r = S.post(ep, data={'data': q}, timeout=900)
+                r = S.post(ep, data={'data': q}, timeout=330)
                 if r.status_code == 200 and r.text.lstrip().startswith('{'):
                     js = r.json(); break
                 log('  overpass', st, ep, r.status_code)
             except Exception as ex:
                 log('  overpass', st, ep, ex)
-            time.sleep(30 * (k + 1))
+            time.sleep(20)
         if js is None:
             rows += [[x['st'], x['k'], x['id'], x['name'], x['type'], x['lat'], x['lng'], x['access'], x['pop']] for x in done.get(st, [])]
             log('  KEEPING last run for', st)
