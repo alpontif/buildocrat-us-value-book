@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>US Land Value Book: land, home and rent values by state, county, city and ZIP | Buildocrat</title>
+<meta name="description" content="Land value per square foot and per acre, home values and rents for every US state, all 3,144 counties and every city, town, ZIP code and neighborhood, on a satellite map. Free, updated weekly from FHFA, Census and HUD data.">
+<link rel="canonical" href="https://valued.buildocrat.store/">
+<meta property="og:title" content="US Land Value Book">
+<meta property="og:description" content="Land value per square foot and per acre, home values and rents for every US state, county, city, ZIP code and neighborhood, on a satellite map. Free and updated weekly.">
+<meta property="og:url" content="https://valued.buildocrat.store/">
+<meta property="og:type" content="website">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1D2675">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="US Land Values">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="application-name" content="US Land Values">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://api.mapbox.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<style>
+/* Design language: the strategy-infographic look. Deep navy display type in a geometric sans (Poppins), navy pill labels,
+   two-tone row blocks (a strong colour column beside a pale panel), arrow-in-circle bullets, thin navy line icons,
+   indigo and coral as the two block colours, all on a cool paper grey inside rounded white sheets. */
+:root{
+  --bg:#EFEFF3; --surface:#FFFFFF; --sunk:#EEF0F9; --ink:#22275A; --muted:#5E638E; --line:#D3D6EA;
+  --navy:#1D2675; --indigo:#3C49A1; --lav:#DCDFF2; --coral:#E8725B; --peach:#F8DDD4;
+  --accent:#1D2675; --accent-soft:#E4E6F6; --on-accent:#FFFFFF; --pin:#E8725B;
+  --sea:#E6E8F4; --land:#F4F5FB; --edge:#B8BDDE; --sedge:#5A62A8; --sel:#1D2675;
+  --s0:#EEF0FA; --s1:#D2D6F0; --s2:#ABB2E0; --s3:#7D87CA; --s4:#5460B0; --s5:#333E93; --s6:#1B2370;
+  --hi:#1F8A5B; --mid:#B26A00; --lo:#C94A33; --nd:#E9EAF2;
+  --f-display:"Poppins","Segoe UI",Arial,sans-serif;
+  --f-body:"Poppins","Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:"Poppins","Segoe UI",Arial,sans-serif;
+  --r-sheet:22px; --r-block:16px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1234; --surface:#171B47; --sunk:#1F2458; --ink:#E7E9FA; --muted:#A3A8D6; --line:#2C3270;
+  --navy:#C9CEFF; --indigo:#4A57B8; --lav:#252B66; --coral:#F08A73; --peach:#3A2730;
+  --accent:#AEB6FF; --accent-soft:#262C6A; --on-accent:#0F1234; --pin:#F08A73;
+  --sea:#11153A; --land:#1A1F4F; --edge:#333A7E; --sedge:#8D95E0; --sel:#F2F3FF;
+  --s0:#1E2356; --s1:#29317A; --s2:#3743A0; --s3:#5562C2; --s4:#7F8BDA; --s5:#B1B9EE; --s6:#E3E6FF;
+  --hi:#5BD39A; --mid:#E8B655; --lo:#F2907A; --nd:#1C2050; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1234; --surface:#171B47; --sunk:#1F2458; --ink:#E7E9FA; --muted:#A3A8D6; --line:#2C3270;
+  --navy:#C9CEFF; --indigo:#4A57B8; --lav:#252B66; --coral:#F08A73; --peach:#3A2730;
+  --accent:#AEB6FF; --accent-soft:#262C6A; --on-accent:#0F1234; --pin:#F08A73;
+  --sea:#11153A; --land:#1A1F4F; --edge:#333A7E; --sedge:#8D95E0; --sel:#F2F3FF;
+  --s0:#1E2356; --s1:#29317A; --s2:#3743A0; --s3:#5562C2; --s4:#7F8BDA; --s5:#B1B9EE; --s6:#E3E6FF;
+  --hi:#5BD39A; --mid:#E8B655; --lo:#F2907A; --nd:#1C2050; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15.5px;line-height:1.6;padding-inline:16px;padding-block:0 64px;font-variant-numeric:tabular-nums}
+.wrap{max-width:1320px;margin-inline:auto}
+a{color:var(--indigo);text-underline-offset:3px}
+:focus-visible{outline:3px solid var(--coral);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.08;color:var(--navy)}
+h2{font-size:clamp(1.5rem,2.6vw,2.1rem);font-weight:800;letter-spacing:-.015em}
+h3{font-size:1.02rem;font-weight:700}
+p{margin:0}
+.num,.mono{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .small{font-size:.85rem}
+
+/* the navy pill: the infographic's column header, used for section labels */
+.eyebrow{display:inline-block;font:600 .78rem/1 var(--f-display);color:#fff;background:var(--navy);padding:8px 16px;border-radius:999px;letter-spacing:.01em}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .eyebrow{color:#0F1234}}
+.panel .eyebrow,.sheet .eyebrow,.pc .eyebrow{background:none;color:var(--muted);padding:0;font-weight:600;font-size:.76rem;border-radius:0}
+
+.btn{font:600 .88rem var(--f-body);padding:9px 18px;border-radius:999px;border:1.5px solid var(--navy);background:var(--navy);color:var(--on-accent);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn.ghost{background:transparent;color:var(--navy)}
+.btn.sm{padding:5px 12px;font-size:.8rem}
+.btn.wab{background:#25D366;border-color:#25D366;color:#073b1c}
+.pill{display:inline-block;font:600 .7rem var(--f-body);padding:2px 9px;border-radius:999px;border:1.5px solid currentColor;white-space:nowrap}
+.c-H{color:var(--hi)}.c-M{color:var(--mid)}.c-L{color:var(--lo)}
+input,select{font:inherit;font-size:.92rem;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:9px 13px;min-width:0}
+input:focus,select:focus{border-color:var(--indigo);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+
+.wa{position:fixed;right:18px;bottom:18px;z-index:60;display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#073b1c;font:700 15px var(--f-body);padding:12px 18px 12px 14px;border-radius:999px;text-decoration:none;box-shadow:0 10px 26px rgba(14,20,80,.28)}
+.wa svg{width:22px;height:22px}
+@media (max-width:520px){.wa span{display:none}.wa{padding:13px}}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-inline:-16px;padding:10px 16px}
+.top .wrap{display:flex;align-items:center;gap:8px 22px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--navy)}
+.brand::before{content:"";width:30px;height:30px;border-radius:9px;background:var(--navy) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z'/%3E%3Ccircle cx='12' cy='11' r='2.2'/%3E%3C/svg%3E") center/18px no-repeat}
+.brand b{font-weight:800;font-size:1.02rem;letter-spacing:-.01em}
+.brand span{font-weight:500;color:var(--muted)}
+.nav{display:flex;gap:4px 18px;flex-wrap:wrap;font-size:.86rem;font-weight:500}
+.nav a{color:var(--muted);text-decoration:none}.nav a:hover{color:var(--navy)}
+.inst{display:inline-flex;align-items:center;gap:7px;font:600 .82rem var(--f-body);color:#fff;background:var(--coral);border:0;border-radius:999px;padding:7px 15px 7px 11px;cursor:pointer;box-shadow:0 4px 12px color-mix(in srgb,var(--coral) 35%,transparent)}
+.inst svg{width:17px;height:17px}.inst:hover{filter:brightness(1.06)}.inst:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
+.wa{bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+.top .sib{margin-left:auto;font-size:.82rem;font-weight:600;color:var(--navy);text-decoration:none;border:1.5px solid var(--line);padding:6px 14px;border-radius:999px}
+
+/* hero: a rounded white sheet, kicker, big navy display type and the white pin tile, as in the reference */
+.hero{position:relative;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:28px 40px;margin-top:22px;padding:40px 40px 34px;background:var(--surface);border-radius:var(--r-sheet);align-items:end}
+.hero .kicker{font:600 .82rem var(--f-display);letter-spacing:.06em;color:var(--navy);text-transform:uppercase}
+.hero h1{font-size:clamp(2.6rem,6.2vw,4.9rem);font-weight:800;letter-spacing:-.03em;line-height:.98;margin-top:10px}
+.pintile{position:absolute;top:22px;right:22px;width:64px;height:64px;border-radius:16px;background:var(--surface);box-shadow:0 6px 22px rgba(29,38,117,.16);display:grid;place-items:center;color:var(--navy);text-decoration:none}
+.pintile svg{width:30px;height:30px}
+.lede{margin-top:16px;max-width:60ch;font-size:1rem;color:var(--muted)}
+.lede strong{color:var(--ink);font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border-radius:var(--r-block);overflow:hidden;background:var(--lav)}
+.stats div{padding:14px 16px;border-bottom:1px solid color-mix(in srgb,var(--navy) 14%,transparent)}
+.stats div:nth-child(odd){border-right:1px solid color-mix(in srgb,var(--navy) 14%,transparent)}
+.stats div:nth-last-child(-n+2){border-bottom:0}
+.stats b{display:block;font-size:1.6rem;font-weight:800;line-height:1.1;color:var(--navy)}
+.stats span{font-size:.78rem;color:var(--muted)}
+.searchbox{position:relative;margin-top:22px;max-width:640px}
+.searchbox input{width:100%;padding:14px 18px 14px 46px;font-size:1rem;border-radius:999px;border-color:var(--lav);background:var(--sunk) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D2675' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 17px center/18px no-repeat}
+.sugg{position:absolute;left:0;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 16px 40px rgba(29,38,117,.18);z-index:40;max-height:360px;overflow:auto;list-style:none;margin:0;padding:6px}
+.sugg li button{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;gap:10px;width:100%;padding:9px 12px;border-radius:10px;cursor:pointer}
+.sugg li button:hover,.sugg li button[aria-selected="true"]{background:var(--accent-soft)}
+.sugg .k{font-size:.74rem;color:var(--muted);white-space:nowrap}
+
+/* the three-values block: strategy / tactics / action-plan layout from the reference */
+.trio{margin-top:22px;background:var(--surface);border-radius:var(--r-sheet);padding:26px;overflow:hidden}
+.trio-head{display:grid;grid-template-columns:minmax(200px,.8fr) minmax(0,1fr) minmax(0,1fr);gap:0 22px;align-items:end;margin-bottom:14px}
+.trio-head .ic{display:flex;flex-direction:column;align-items:center;gap:10px}
+.trio-head svg{width:40px;height:40px;color:var(--navy)}
+.trio-head .eyebrow{min-width:150px;text-align:center}
+.trow{display:grid;grid-template-columns:minmax(200px,.8fr) minmax(0,2fr);border-radius:var(--r-block);overflow:hidden;margin-top:12px}
+.tlead{background:var(--indigo);color:#fff;padding:22px 20px;display:flex;flex-direction:column;gap:8px;cursor:pointer;border:0;text-align:left;font:inherit}
+.tlead svg{width:44px;height:44px;color:#fff;opacity:.95}
+.tlead strong{font:700 1.15rem/1.15 var(--f-display);color:#fff}
+.tlead span{font-size:.82rem;color:rgba(255,255,255,.82)}
+.tlead em{font-style:normal;font-weight:600;font-size:.78rem;margin-top:auto;color:#fff;text-decoration:underline;text-underline-offset:3px}
+.tbody{background:var(--lav);display:grid;grid-template-columns:1fr 1fr}
+.tbody ul{list-style:none;margin:0;padding:6px 20px}
+.tbody ul+ul{border-left:1.5px solid color-mix(in srgb,var(--navy) 30%,transparent)}
+.tbody li{display:flex;gap:12px;align-items:flex-start;padding:12px 0;font-size:.86rem;color:var(--ink)}
+.tbody li+li{border-top:1px solid color-mix(in srgb,var(--navy) 18%,transparent)}
+.tbody li::before{content:"";flex:0 0 22px;height:22px;border-radius:50%;border:1.5px solid var(--navy);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D2675' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12h11M13 7l5 5-5 5'/%3E%3C/svg%3E") center/13px no-repeat}
+.trow.coral .tlead{background:var(--coral)}
+.trow.coral .tbody{background:var(--peach)}
+.trow.coral .tbody li::before{border-color:var(--coral);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E8725B' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12h11M13 7l5 5-5 5'/%3E%3C/svg%3E")}
+.trow.coral .tbody ul+ul{border-color:color-mix(in srgb,var(--coral) 45%,transparent)}
+.trow.coral .tbody li+li{border-color:color-mix(in srgb,var(--coral) 30%,transparent)}
+.trow.deep .tlead{background:var(--navy)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .trow.deep .tlead{background:#2A3488}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tbody li::before,:root:not([data-theme="light"]) .cols li::before{border-color:#C9CEFF;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C9CEFF' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12h11M13 7l5 5-5 5'/%3E%3C/svg%3E")}
+:root:not([data-theme="light"]) .trow.coral .tbody li::before{border-color:#F08A73}}
+
+section{padding-block:44px 8px}
+.sec-head{display:flex;justify-content:space-between;align-items:end;gap:10px 24px;flex-wrap:wrap;margin-bottom:18px}
+.sec-head h2{margin-top:12px}
+.sec-head p{max-width:68ch;color:var(--muted);margin-top:8px}
+.sec-head .eyebrow{color:#fff;margin-top:0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sec-head .eyebrow{color:#0F1234}}
+
+/* map app */
+.app{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(330px,1fr);gap:18px;align-items:start}
+.mapcard{position:relative;border-radius:var(--r-sheet);overflow:hidden;background:var(--sea);min-width:0;box-shadow:0 0 0 1px var(--line)}
+#map{display:block;width:100%;height:min(74vh,720px);touch-action:none;cursor:grab}
+#map.drag{cursor:grabbing}
+#mbmap{width:100%;height:min(74vh,720px)}
+.mb .legend{bottom:34px}
+.mb .hint{display:none}
+.mb .tip{z-index:5}
+.mapboxgl-ctrl-bottom-right{z-index:3}
+.tabs{display:inline-flex;gap:6px;margin:0 0 14px;padding:6px;background:var(--surface);border-radius:999px;overflow-x:auto;max-width:100%}
+.tabs button{font:600 .95rem var(--f-display);padding:10px 22px;border:0;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--navy);color:var(--on-accent)}
+.pinbox{background:var(--surface);border-radius:var(--r-block);padding:14px 16px;margin-bottom:14px}
+.pinbox label{display:block;font-weight:700;color:var(--navy);font-size:.9rem;margin-bottom:8px}
+.pinrow{display:flex;gap:8px;flex-wrap:wrap}.pinrow input{flex:1 1 280px;border-radius:999px;padding-left:18px}
+.pc{border-radius:14px;padding:12px 14px;background:var(--sunk)}
+.pcode{display:flex;align-items:baseline;gap:10px;margin:2px 0 4px}
+.pcode .mono{font-size:1.35rem;font-weight:700;letter-spacing:.06em;color:var(--navy)}
+.ztag{font:600 .72rem var(--f-body);padding:3px 10px;border-radius:999px;border:1.5px solid var(--zc);color:var(--zc);align-self:center}
+.zdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.zleg{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;max-width:330px}.zleg span{display:inline-flex;align-items:center;gap:5px}.zleg i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.lgafilt{display:flex;gap:6px;margin-bottom:8px}.lgafilt input{flex:1;min-width:0}
+.mini.zt td{font-size:.8rem}
+.mapbar{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:6px;flex-wrap:wrap;z-index:2;pointer-events:none}
+.mapbar>*{pointer-events:auto}
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:999px;background:var(--surface);box-shadow:0 4px 14px rgba(29,38,117,.14)}
+.seg button{font:600 .78rem var(--f-body);border:0;background:transparent;color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--navy);color:var(--on-accent)}
+.legend{position:absolute;left:12px;bottom:12px;background:var(--surface);border-radius:14px;padding:10px 12px;font-size:.74rem;z-index:2;max-width:calc(100% - 24px);box-shadow:0 4px 14px rgba(29,38,117,.14);color:var(--ink)}
+.legend .row{display:flex;margin-top:6px;border-radius:999px;overflow:hidden;width:max-content}
+.legend .row i{display:block;width:30px;height:10px}
+.legend .lab{display:flex;margin-top:3px;color:var(--muted);font-size:.64rem}
+.legend .lab span{width:30px;text-align:right;transform:translateX(50%)}
+.legend .lab span:last-child{visibility:hidden}
+.hint{position:absolute;right:12px;bottom:12px;font-size:.74rem;background:var(--surface);border-radius:999px;padding:6px 12px;color:var(--muted);z-index:2}
+.tip{position:absolute;z-index:3;pointer-events:none;background:var(--surface);border-radius:12px;padding:9px 11px;font-size:.8rem;box-shadow:0 10px 26px rgba(29,38,117,.22);max-width:260px;color:var(--ink)}
+.tip b{color:var(--navy)}
+
+.panel{background:var(--surface);border-radius:var(--r-sheet);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0;position:sticky;top:70px;max-height:calc(100vh - 86px);overflow:auto}
+.crumbs{font-size:.8rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px}
+.crumbs button{all:unset;cursor:pointer;color:var(--indigo);text-decoration:underline;text-underline-offset:3px}
+.ptitle{display:flex;justify-content:space-between;gap:10px;align-items:start}
+.ptitle h3{font-size:1.5rem;font-weight:800;letter-spacing:-.015em}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{font-size:.72rem;font-weight:500;padding:3px 10px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.tag.u{background:var(--navy);color:var(--on-accent)}
+.headline{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.headline .big{font-size:2.3rem;font-weight:800;color:var(--navy);line-height:1;letter-spacing:-.02em}
+.vals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-radius:var(--r-block);overflow:hidden;background:var(--lav)}
+.vals div{padding:11px 14px;min-width:0;border-bottom:1px solid color-mix(in srgb,var(--navy) 14%,transparent)}
+.vals div:nth-child(odd){border-right:1px solid color-mix(in srgb,var(--navy) 14%,transparent)}
+.vals span{display:block;font-size:.74rem;color:var(--muted)}
+.vals b{font-size:1rem;font-weight:700;color:var(--navy)}
+.vals small{display:block;font-size:.7rem;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.note{font-size:.8rem;color:var(--muted)}
+.mini{width:100%;border-collapse:collapse;font-size:.84rem}
+.mini td{padding:7px 2px;border-bottom:1px solid var(--line);vertical-align:top}
+.mini td.r{text-align:right;white-space:nowrap;font-weight:600;color:var(--navy)}
+.mini button{all:unset;cursor:pointer;color:var(--ink);font-weight:500}
+.mini button:hover{color:var(--indigo);text-decoration:underline}
+
+/* tables */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.filters input{flex:1 1 220px}
+.tablewrap{overflow-x:auto;border-radius:var(--r-block);background:var(--surface)}
+table.t{border-collapse:collapse;width:100%;font-size:.86rem}
+.t th,.t td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+.t th{font-weight:600;font-size:.78rem;color:var(--navy);background:var(--lav);white-space:nowrap;cursor:pointer;user-select:none}
+.t th[data-k=""]{cursor:default}
+.t th.r,.t td.r{text-align:right}
+.t td.num{white-space:nowrap}
+.t td.num b{color:var(--navy)}
+.t tr:hover td{background:var(--sunk)}
+.t .nm{font-weight:600}
+.t .nm small{display:block;font-weight:400;color:var(--muted);font-size:.76rem}
+.linkbtn{all:unset;cursor:pointer;color:var(--indigo);text-decoration:underline;text-underline-offset:3px;font-size:.84rem;font-weight:500}
+.pager{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:.84rem;color:var(--muted);flex-wrap:wrap}
+
+/* estimator */
+.estgrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
+.form{background:var(--surface);border-radius:var(--r-sheet);padding:22px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.form .full{grid-column:1/-1}
+.form label{display:block;font-weight:600;font-size:.86rem;margin-bottom:6px;color:var(--navy)}
+.form input,.form select{width:100%}
+.sheet{background:var(--navy);color:#fff;border-radius:var(--r-sheet);padding:24px;align-self:start}
+.sheet .eyebrow{color:rgba(255,255,255,.75)}
+.sheet .total{font-size:clamp(1.9rem,3.8vw,2.7rem);font-weight:800;color:#fff;margin-top:4px;letter-spacing:-.02em}
+.sheet .muted,.sheet .note{color:rgba(255,255,255,.72)}
+.sheet dl{display:grid;grid-template-columns:1fr auto;gap:8px 14px;margin:14px 0 0;font-size:.9rem}
+.sheet dt{color:rgba(255,255,255,.75)} .sheet dd{margin:0;text-align:right;font-weight:600}
+.sheet .sub{border-top:1px solid rgba(255,255,255,.22);padding-top:8px;font-weight:700;color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sheet{background:#2A3488}}
+
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.cols>div{background:var(--surface);border-radius:var(--r-block);padding:20px}
+.cols p,.cols li{font-size:.88rem;color:var(--muted)}
+.cols ul{list-style:none;margin:8px 0 0;padding:0}
+.cols li{position:relative;padding-left:30px;margin-bottom:8px}
+.cols li::before{content:"";position:absolute;left:0;top:2px;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--navy);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D2675' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12h11M13 7l5 5-5 5'/%3E%3C/svg%3E") center/12px no-repeat}
+.cols h3{margin-bottom:8px}
+#facts .cols>div{background:var(--lav)}
+footer{margin-top:48px;padding:26px 28px;border-radius:var(--r-sheet);background:var(--navy);font-size:.84rem;color:rgba(255,255,255,.8);display:grid;gap:8px}
+footer a{color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) footer{background:#171B47}}
+.loading{padding:40px;text-align:center;color:var(--muted)}
+
+@media (max-width:1000px){ .app,.hero,.estgrid{grid-template-columns:minmax(0,1fr)} .panel{position:static;max-height:none} .cols{grid-template-columns:minmax(0,1fr)} .top .sib{margin-left:0} #map,#mbmap{height:62vh}
+  .trio-head{display:none} .trow{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:640px){ .hero .kicker{padding-right:62px} .nav{flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:none} .nav a{white-space:nowrap} .nav::-webkit-scrollbar{display:none} .top .sib{display:none} .inst{margin-left:auto;padding:6px 12px 6px 9px} .inst .lg{display:none} .top .brand span{font-size:.8rem} .hero{padding:28px 20px 22px} .pintile{width:52px;height:52px;top:16px;right:16px} .tbody{grid-template-columns:minmax(0,1fr)} .tbody ul+ul{border-left:0;border-top:1.5px solid color-mix(in srgb,var(--navy) 30%,transparent)} .trio{padding:14px} }
+@media (max-width:520px){ .form{grid-template-columns:minmax(0,1fr)} .vals{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .legend .row i{width:24px} .legend .lab span{width:24px} .hint{display:none} }
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style>
+<!--SEO:HEAD--><!--/SEO:HEAD-->
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top"><b>Buildocrat</b><span>US Land Value Book</span></a>
+    <button class="inst" type="button" data-install hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7.5v7M9 11.5l3 3 3-3"/></svg>Install<span class="lg">&nbsp;app</span></button>
+    <nav class="nav" aria-label="Sections">
+      <a href="#mapsec">Map</a><a href="#states">States</a><a href="#lgas">Counties</a><a href="#places">Cities &amp; ZIPs</a><a href="#evidence">Land data</a><a href="#estimate">Estimator</a><a href="#method">Method</a><a href="/extension/">Chrome extension</a><a href="/faq/">FAQ</a>
+    </nav>
+    <a class="sib" href="https://value.buildocrat.store/">Nigeria edition →</a>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+  <div class="hero">
+    <div>
+      <p class="kicker">US Land Value Book, week of <span id="edDate">October 2026</span></p>
+      <h1>Land values across America</h1>
+      <p class="lede">Land, home and rental values for <strong>every state, all <span id="hCounties">3,144</span> counties</strong> and <strong><span id="hPlaces">every mapped</span> cities, towns, ZIP codes, neighborhoods and subdivisions</strong>, built from public FHFA, Census and HUD data and updated every week. Prices in US dollars; land per square foot and per acre.</p>
+      <div class="searchbox">
+        <input id="q" type="search" autocomplete="off" placeholder="Search a state, county, city, neighborhood or ZIP code" aria-label="Search places" aria-controls="sugg" aria-autocomplete="list">
+        <ul class="sugg" id="sugg" role="listbox" hidden></ul>
+      </div>
+    </div>
+    <div class="stats" id="stats">
+      <div><b>51</b><span>states and DC</span></div>
+      <div><b id="sCounties">–</b><span>counties and equivalents</span></div>
+      <div><b id="sTracts">–</b><span>census tracts valued</span></div>
+      <div><b id="sZips">–</b><span>ZIP codes</span></div>
+      <div><b id="sPlaces">–</b><span>places, week of <span id="sDate">–</span></span></div>
+      <div><b id="sEv">–</b><span>ZIP codes with published land prices</span></div>
+    </div>
+    <a class="pintile" href="#pinform" title="Drop a pin by coordinates" aria-label="Drop a pin by coordinates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3l6 6-3 1-4 4 1 4-2 2-4-4-5 5M9 11l4 4M15 3l-2 3 5 5 3-2"/></svg></a>
+  </div>
+
+  <div class="trio" aria-label="Three values for any spot">
+    <div class="trio-head" aria-hidden="true">
+      <div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="14"/><circle cx="24" cy="24" r="7"/><circle cx="24" cy="24" r="1.5"/><path d="M24 4v8M24 36v8M4 24h8M36 24h8"/></svg><span class="eyebrow">Value</span></div>
+      <div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 30l10-12 9 9 7-7 10 10"/><circle cx="34" cy="13" r="4"/><rect x="4" y="6" width="40" height="36" rx="4"/></svg><span class="eyebrow">What you see</span></div>
+      <div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="10" y="7" width="28" height="36" rx="3"/><path d="M18 7v-2h12v2"/><path d="M16 18h16M16 25h16M16 32h10"/></svg><span class="eyebrow">How to use it</span></div>
+    </div>
+    <div class="trow "><button class="tlead" type="button" data-tab="land"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 36l10-6 16 6 10-6V12l-10 6-16-6-10 6z"/><path d="M16 12v18M32 18v18"/><path d="M24 8a5 5 0 0 1 5 5c0 4-5 8-5 8s-5-4-5-8a5 5 0 0 1 5-5z"/></svg><strong>Land value</strong><span>Residential land per square foot and per acre, lot prices and farmland.</span><em>Show on the map</em></button><div class="tbody"><ul><li>Price per sq ft and per acre at any spot you click</li><li>What a quarter-acre lot or a 5,000 sq ft city lot is worth</li><li>Its price tier, from Top tier to Entry, Rural and Farmland</li></ul><ul><li>Check an asking price before you make an offer</li><li>Compare lots across counties, cities, ZIPs and subdivisions</li><li>Drop a pin or paste a Google Maps link to value a lot</li></ul></div></div>
+    <div class="trow coral"><button class="tlead" type="button" data-tab="bld"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22L24 8l18 14"/><path d="M11 18v22h26V18"/><path d="M20 40V28h8v12"/></svg><strong>Home value</strong><span>Typical, entry-level and upper-end home values, and the cost to build new.</span><em>Show on the map</em></button><div class="tbody"><ul><li>Median, lower-quartile and upper-quartile home values</li><li>The structure's value apart from its land</li><li>Cost per sq ft to build new in your region</li></ul><ul><li>Test whether a listing is fairly priced</li><li>Decide between buying a home and building one</li><li>Value land and building together in the estimator</li></ul></div></div>
+    <div class="trow deep"><button class="tlead" type="button" data-tab="rent"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="16" cy="30" r="8"/><path d="M22 25l18-17M34 14l5 5M30 18l4 4"/></svg><strong>Rental value</strong><span>Monthly rents for 1- to 4-bedroom homes, with the gross yield.</span><em>Show on the map</em></button><div class="tbody"><ul><li>Rent a month for 1- to 4-bedroom homes</li><li>Gross yield and price-to-rent ratio</li><li>Down to the ZIP code, from HUD Fair Market Rents</li></ul><ul><li>Set or check a rent before you sign a lease</li><li>Compare yields across markets before you invest</li><li>Ask us on WhatsApp or by email about a property</li></ul></div></div>
+  </div>
+
+  <section id="mapsec">
+    <div class="sec-head">
+      <div>
+        <p class="eyebrow">National map</p>
+        <h2>Pick any spot in the US</h2>
+        <p>Every county is shaded by the layer you choose. Zoom in on the satellite image to find towns, streets and the actual lot or house, then click it for its values and its ZIP code. The locate button finds where you are standing.</p>
+      </div>
+    </div>
+    <div class="tabs" role="tablist" id="tabs" aria-label="Value type">
+      <button type="button" role="tab" data-t="land" aria-selected="true">Land value</button>
+      <button type="button" role="tab" data-t="bld" aria-selected="false" tabindex="-1">Home value</button>
+      <button type="button" role="tab" data-t="rent" aria-selected="false" tabindex="-1">Rental value</button>
+    </div>
+    <form class="pinbox" id="pinform" autocomplete="off">
+      <label for="pinq">Drop a pin by coordinates</label>
+      <div class="pinrow"><input id="pinq" type="text" inputmode="text" placeholder="33.7490, -84.3880  ·  33°44'56&quot;N 84°23'17&quot;W  ·  or paste a Google Maps link"><button class="btn" type="submit">Value it</button><button class="btn ghost" type="button" id="pinme">Use my location</button></div>
+      <p class="note" id="pinmsg" aria-live="polite"></p>
+    </form>
+    <div class="app">
+      <div class="mapcard" id="mapcard">
+        <div class="mapbar">
+          <div class="seg" role="group" aria-label="Map layer" id="layers"></div>
+          <div class="seg" role="group" aria-label="Base map" id="basemap" hidden><button type="button" data-b="sat" aria-pressed="true">Satellite</button><button type="button" data-b="map" aria-pressed="false">Map</button></div>
+          <div class="seg" role="group" aria-label="Zoom">
+            <button type="button" id="zin" aria-label="Zoom in">+</button>
+            <button type="button" id="zout" aria-label="Zoom out">−</button>
+            <button type="button" id="zall">USA</button>
+          </div>
+        </div>
+        <canvas id="map" aria-label="Map of US counties shaded by value"></canvas>
+        <div id="mbmap" hidden aria-label="Satellite map of the United States with land values"></div>
+        <div class="legend" id="legend"></div>
+        <div class="hint">Drag to pan · scroll or pinch to zoom · click for values</div>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+      <aside class="panel" id="panel" aria-live="polite"><div class="loading">Loading 3,144 counties, 85,000 census tracts and the places directory…</div></aside>
+    </div>
+  </section>
+
+  <section id="states">
+    <div class="sec-head"><div><p class="eyebrow">States</p><h2>Every state at a glance</h2><p><span id="stabT">Land value: state medians across census tracts.</span> Click a row to open the state on the map. The tabs above the map switch these tables between land, home and rental values.</p></div></div>
+    <div class="tablewrap"><table class="t" id="stable"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section id="lgas">
+    <div class="sec-head"><div><p class="eyebrow">Counties</p><h2>Every county, parish and borough</h2><p>County figures are medians across the county's census tracts, weighted by the number of homes; the range runs from its most rural tract to its most valuable one.</p></div></div>
+    <div class="filters">
+      <input id="lq" type="search" placeholder="Filter counties" aria-label="Filter counties">
+      <select id="lst" aria-label="State"><option value="">All states</option></select>
+      <select id="lcl" aria-label="Setting"><option value="">All settings</option><option>Metro core</option><option>Suburban</option><option>Small town</option><option>Rural</option></select>
+    </div>
+    <div class="tablewrap"><table class="t" id="ltable"><thead></thead><tbody></tbody></table></div>
+    <div class="pager" id="lpager"></div>
+  </section>
+
+  <section id="places">
+    <div class="sec-head"><div><p class="eyebrow">Cities, ZIP codes and neighborhoods</p><h2>Places directory</h2><p>Every Census city, town and community, every ZIP code, and every named neighborhood, village and subdivision in OpenStreetMap, valued. Search by name, or narrow to a state and type.</p></div></div>
+    <div class="filters">
+      <input id="pq" type="search" placeholder="Search cities, ZIP codes, neighborhoods" aria-label="Search places">
+      <select id="pst" aria-label="State"><option value="">All states</option></select>
+      <select id="pty" aria-label="Level"><option value="">All levels</option><option value="0">Cities</option><option value="1">Towns</option><option value="2">Communities</option><option value="3">ZIP codes</option><option value="4">Neighborhoods</option><option value="5">Villages</option><option value="7">Subdivisions</option><option value="8">Gated communities</option><option value="6">Hamlets</option></select>
+      <select id="psort" aria-label="Sort"><option value="v">Highest value first</option><option value="a">A to Z</option><option value="l">Lowest value first</option></select>
+    </div>
+    <div class="tablewrap"><table class="t" id="ptable"><thead></thead><tbody></tbody></table></div>
+    <div class="pager" id="ppager"></div>
+  </section>
+
+  <section id="evidence">
+    <div class="sec-head"><div><p class="eyebrow">Land data</p><h2>Published land prices by ZIP code</h2><p>FHFA's residential land price for each ZIP code where it publishes one, per acre of a standard quarter-acre lot, as published for the year shown. These anchor the land layer; the book moves them forward to <span class="evDate">–</span> with FHFA's house price index.</p></div></div>
+    <div class="filters">
+      <input id="eq" type="search" placeholder="Filter by ZIP code or place" aria-label="Filter land data">
+      <select id="est" aria-label="State"><option value="">All states</option></select>
+    </div>
+    <div class="tablewrap"><table class="t" id="etable"><thead></thead><tbody></tbody></table></div>
+    <div class="pager" id="epager"></div>
+  </section>
+
+  <section id="estimate">
+    <div class="sec-head"><div><p class="eyebrow">Estimator</p><h2>Value a lot or a home</h2><p>Uses the location selected on the map. Land at the local value, adjusted for lot size, shape, access and zoning, plus the building at depreciated replacement cost using the Census cost to build in your region.</p></div></div>
+    <div class="estgrid">
+      <form class="form" id="ef" onsubmit="return false">
+        <div class="full"><label>Location</label><div id="e_loc" class="small muted">Select a place on the map first.</div></div>
+        <div><label for="e_use">Land use</label><select id="e_use"><option value="res">Residential</option><option value="farm">Farmland or pasture</option></select></div>
+        <div><label for="e_size">Lot size</label><div style="display:flex;gap:6px"><input id="e_size" type="number" min="0" step="any" value="10890"><select id="e_unit" aria-label="Unit" style="width:auto"><option value="sf">sq ft</option><option value="ac">acres</option></select></div></div>
+        <div><label for="e_shape">Lot shape and terrain</label><select id="e_shape"><option value="1.05">Corner or view lot</option><option value="1" selected>Regular, level</option><option value="0.9">Irregular or sloping</option><option value="0.8">Flood zone or wetland</option></select></div>
+        <div><label for="e_road">Access and utilities</label><select id="e_road"><option value="1" selected>Paved road, city water and sewer</option><option value="0.92">Paved road, well and septic</option><option value="0.82">Gravel road, no utilities</option><option value="0.7">No legal road access</option></select></div>
+        <div><label for="e_zone">Zoning</label><select id="e_zone"><option value="1" selected>Residential, buildable now</option><option value="1.15">Allows more units (duplex, multifamily)</option><option value="0.85">Needs a rezoning or permit</option><option value="0.6">Not buildable (easement, setbacks)</option></select></div>
+        <div><label for="e_bld">Building</label><select id="e_bld"><option value="0">None, vacant land</option><option value="1" selected>Single-family home</option><option value="0.95">Townhouse</option><option value="0.9">Duplex or small multifamily</option><option value="0.45">Manufactured home</option></select></div>
+        <div><label for="e_gfa">Finished floor area (sq ft)</label><input id="e_gfa" type="number" min="0" step="10" value="2000"></div>
+        <div><label for="e_beds">Bedrooms (for rent)</label><select id="e_beds"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4 or more</option></select></div>
+        <div><label for="e_fin">Finish</label><select id="e_fin"><option value="0.8">Economy</option><option value="1" selected>Standard</option><option value="1.5">Custom or luxury</option></select></div>
+        <div><label for="e_age">Age (years)</label><input id="e_age" type="number" min="0" max="120" step="1" value="10"></div>
+      </form>
+      <div class="sheet" aria-live="polite">
+        <p class="eyebrow">Indicative market value</p>
+        <div class="total num" id="o_total">–</div>
+        <p class="small muted" id="o_range"></p>
+        <dl>
+          <dt>Land, $/sq ft for this lot</dt><dd id="o_rate">–</dd>
+          <dt>Adjustments (shape × access × zoning)</dt><dd id="o_adj">–</dd>
+          <dt class="sub">Land value</dt><dd class="sub" id="o_land">–</dd>
+          <dt>Build cost new</dt><dd id="o_new">–</dd>
+          <dt>Less depreciation</dt><dd id="o_dep">–</dd>
+          <dt class="sub">Building</dt><dd class="sub" id="o_bld">–</dd>
+          <dt class="sub">Likely rent</dt><dd class="sub" id="o_rent">–</dd>
+          <dt>Gross yield on value</dt><dd id="o_yield">–</dd>
+        </dl>
+        <p class="note" style="margin-top:12px">Build cost <span id="o_bc">–</span> from the Census Survey of Construction (contract price per sq ft, no land), times the building and finish factors. Depreciation 1.25% a year, capped at 60%. Larger lots are valued at a lower rate per sq ft. Not an appraisal: for lending, a tax appeal or legal use, hire a state-licensed or certified appraiser.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="method">
+    <div class="sec-head"><div><p class="eyebrow">Method &amp; sources</p><h2>How every value is made</h2></div></div>
+    <div class="cols" id="methodcols"></div>
+  </section>
+
+  <!--SEO:BODY--><!--/SEO:BODY-->
+
+  <footer>
+    <p>The US Land Value Book is published by Buildocrat alongside the <a href="https://value.buildocrat.store/">Nigeria Land Value Book</a> and the <a href="https://rates.buildocrat.store/">Nigeria Construction Rate Book</a>.</p>
+    <p>Buildocrat Property Technologies Ltd. WhatsApp <span class="mono">+234 701 802 4292</span>, email <a href="mailto:buildocrat@gmail.com">buildocrat@gmail.com</a>.</p>
+    <p><b>Value Lens for Chrome:</b> hover over Google Maps or OpenStreetMap anywhere in the US to see land, home and rental values at your cursor. <a href="/extension/">Get the extension</a>.</p>
+    <p>Indicative values for screening, budgeting and negotiation. Not an appraisal and not a substitute for one under USPAP; for lending, a tax appeal or legal use, hire a state-licensed or certified appraiser. Check title, zoning and flood zone before buying land. Data: FHFA, U.S. Census Bureau, HUD, USDA NASS (public domain). This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau. Map data © OpenStreetMap contributors (ODbL); satellite imagery © Mapbox, © Maxar.</p>
+  </footer>
+</main>
+
+<a class="wa" id="wa" href="https://wa.me/2347018024292?text=Hello%20Buildocrat%2C%20I%27m%20on%20the%20US%20Land%20Value%20Book%20(valued.buildocrat.store).%20" target="_blank" rel="noopener" aria-label="Chat with Buildocrat on WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M16 3C9 3 3.3 8.6 3.3 15.6c0 2.2.6 4.4 1.7 6.3L3 29l7.3-1.9c1.8 1 3.8 1.5 5.8 1.5 7 0 12.7-5.7 12.7-12.6C28.8 8.6 23.1 3 16 3zm0 23.2c-1.8 0-3.6-.5-5.2-1.4l-.4-.2-4.3 1.1 1.2-4.2-.3-.4a10.4 10.4 0 0 1-1.6-5.5C5.4 9.8 10.2 5.1 16 5.1s10.6 4.7 10.6 10.5S21.8 26.2 16 26.2zm5.8-7.8c-.3-.2-1.9-.9-2.2-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7.1a8.6 8.6 0 0 1-4.3-3.7c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4s-1.2 1.1-1.2 2.8 1.2 3.2 1.4 3.5 2.4 3.6 5.8 5c2.1.9 3 1 4 .8.6-.1 1.9-.8 2.2-1.5s.3-1.4.2-1.5-.3-.2-.6-.3z"/></svg><span>Chat on WhatsApp</span></a>
+<script src="pwa.js" defer></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

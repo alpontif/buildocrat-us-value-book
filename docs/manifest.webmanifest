@@ -1,0 +1,99 @@
+{
+  "id": "/",
+  "name": "US Land Value Book by Buildocrat",
+  "short_name": "US Land Values",
+  "description": "Land, home and rental values for every US state, county, city, ZIP code and neighborhood, on a satellite map. Free and updated weekly.",
+  "lang": "en-US",
+  "dir": "ltr",
+  "start_url": "/?source=app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#1D2675",
+  "background_color": "#EFEFF3",
+  "categories": [
+    "business",
+    "finance",
+    "navigation",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Value map",
+      "short_name": "Map",
+      "url": "/?source=app#mapsec",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Value at coordinates",
+      "short_name": "Drop a pin",
+      "url": "/?source=app#pinform",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Value estimator",
+      "short_name": "Estimator",
+      "url": "/?source=app#estimate",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "title": "st",
+      "text": "stx",
+      "url": "su"
+    },
+    "enctype": "application/x-www-form-urlencoded"
+  },
+  "prefer_related_applications": false
+}

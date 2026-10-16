@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Buildocrat Value Lens (US)",
+  "short_name": "Value Lens US",
+  "version": "1.0.0",
+  "description": "Hover over Google Maps or OpenStreetMap anywhere in the US to see land, home and rental values from the Buildocrat US Land Value Book.",
+  "homepage_url": "https://valued.buildocrat.store/",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Buildocrat Value Lens (US)",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png"
+    }
+  },
+  "background": {
+    "service_worker": "sw.js"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://valued.buildocrat.store/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.google.com/maps*",
+        "https://maps.google.com/*",
+        "https://www.openstreetmap.org/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "toggle-lens": {
+      "suggested_key": {
+        "default": "Alt+Shift+V"
+      },
+      "description": "Turn the value lens on or off"
+    }
+  }
+}
