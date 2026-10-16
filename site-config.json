@@ -2,7 +2,7 @@
   "domain": "valued.buildocrat.store",
   "brand": "US Land Value Book by Buildocrat",
   "publisher": "Buildocrat Property Technologies Ltd",
-  "mapbox_token": "",
+  "mapbox_token": "pk.eyJ1IjoiYnVpbGRvY3JhdCIsImEiOiJjbXZhNHhha3EwMWRpMnlzODg3ZzllbndlIn0.pthzt30rmS4LQOq_BOI0rQ",
   "mapbox_style_satellite": "mapbox://styles/mapbox/satellite-streets-v12",
   "mapbox_style_streets": "mapbox://styles/mapbox/light-v11",
   "indexnow_key": "dc940874664f3e1e9c0e6af1aaa43284",
