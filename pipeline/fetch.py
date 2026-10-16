@@ -63,7 +63,7 @@ def first_ok(urls):
             r = S.head(u, timeout=60, allow_redirects=True)
             if r.status_code == 200:
                 return u
-            if r.status_code in (403, 405):  # some servers refuse HEAD
+            if r.status_code != 404:  # some servers refuse or mishandle HEAD
                 r = S.get(u, timeout=60, stream=True)
                 r.close()
                 if r.status_code == 200:
@@ -202,7 +202,45 @@ ACS_VARS = ['B01003_001E', 'B25001_001E', 'B25002_002E', 'B25003_002E', 'B25003_
             'B25035_001E', 'B25018_001E', 'B25024_002E', 'B25024_001E']
 
 
+SF_TABLES = ['B01003', 'B25001', 'B25002', 'B25003', 'B25077', 'B25076', 'B25078', 'B25064', 'B25031', 'B25035', 'B25018', 'B25024']
+SF_LEVELS = {'0400000US': 'state', '0500000US': 'county', '1400000US': 'tract', '1600000US': 'place', '860Z200US': 'zcta'}
+
+
 def acs():
+    """ACS 5-year from the Census table-based summary files (one pipe-delimited file per table, every geography)."""
+    year = None
+    for y in range(datetime.date.today().year - 1, 2020, -1):
+        u = f'https://www2.census.gov/programs-surveys/acs/summary_file/{y}/table-based-SF/data/5YRData/acsdt5y{y}-b25077.dat'
+        if first_ok([u]):
+            year = y; break
+    if not year:
+        log('  summary files not found; trying the Census Data API')
+        return acs_api()
+    log('ACS 5-year summary files', year)
+    data = {lv: {} for lv in SF_LEVELS.values()}
+    cols_all = []
+    for t in SF_TABLES:
+        u = f'https://www2.census.gov/programs-surveys/acs/summary_file/{year}/table-based-SF/data/5YRData/acsdt5y{year}-{t.lower()}.dat'
+        p = download(u, f'acs{year}_{t}.dat')
+        with open(p, encoding='utf-8', errors='replace') as f:
+            head = f.readline().rstrip('\n').split('|')
+            want = [i for i, h in enumerate(head) if re.match(rf'{t}_E\d+$', h)]
+            cols_all += [head[i].replace('_E', '_') + 'E' for i in want]
+            for line in f:
+                gid = line[:line.index('|')]
+                lv = SF_LEVELS.get(gid[:9])
+                if not lv:
+                    continue
+                parts = line.rstrip('\n').split('|')
+                data[lv].setdefault(gid[9:], {}).update({head[i].replace('_E', '_') + 'E': parts[i] for i in want})
+        os.remove(p)
+        log('  table', t)
+    for lv, d in data.items():
+        write_csv_gz(os.path.join(RAW, f'acs_{lv}.csv.gz'), ['GEOID'] + cols_all, ([g] + [r.get(c, '') for c in cols_all] for g, r in d.items()))
+    RUN['acs'] = year
+
+
+def acs_api():
     year = None
     for y in range(datetime.date.today().year - 1, 2020, -1):
         try:
@@ -272,17 +310,16 @@ def fhfa_land():
 def fhfa_hpi():
     base = 'https://www.fhfa.gov/hpi/download'
     cands = {
-        'hpi_county': [f'{base}/annually/hpi_at_bdl_county.xlsx'],
-        'hpi_zip5': [f'{base}/annually/hpi_at_bdl_zip5.xlsx'],
-        'hpi_tract': [f'{base}/annually/hpi_at_bdl_tract.csv'],
+        'hpi_county': [f'{base}/annual/hpi_at_county.xlsx', f'{base}/annually/hpi_at_bdl_county.xlsx'],
+        'hpi_zip5': [f'{base}/annual/hpi_at_zip5.xlsx', f'{base}/annually/hpi_at_bdl_zip5.xlsx'],
         'hpi_state_q': [f'{base}/quarterly_datasets/hpi_at_state.csv'],
         'hpi_po_monthly': [f'{base}/monthly/hpi_po_monthly_hist.xls', f'{base}/monthly/hpi_po_monthly_hist.xlsx'],
         'hpi_po_state_q': [f'{base}/quarterly_datasets/hpi_po_state.txt', f'{base}/quarterly_datasets/hpi_po_state.xls'],
     }
     try:
         found = links('https://www.fhfa.gov/data/hpi/datasets', r'/hpi/download/')
-        for k, pat in (('hpi_county', r'at_bdl_county'), ('hpi_zip5', r'at_bdl_zip5'), ('hpi_tract', r'at_bdl_tract'),
-                       ('hpi_state_q', r'hpi_at_state\.'), ('hpi_po_monthly', r'po_monthly_hist'), ('hpi_po_state_q', r'hpi_po_state\.')):
+        for k, pat in (('hpi_county', r'annual/hpi_at_county'), ('hpi_zip5', r'annual/hpi_at_zip5'),
+                       ('hpi_state_q', r'quarterly_datasets/hpi_at_state\.'), ('hpi_po_monthly', r'po_monthly_hist'), ('hpi_po_state_q', r'hpi_po_state\.')):
             cands[k] = [u for u in found if re.search(pat, u, re.I)] + cands[k]
     except Exception as ex:
         log('  HPI page not read', ex)
@@ -320,8 +357,10 @@ def hud_fmr():
         yy = str(y)[2:]
         county = [u for u in found if re.search(rf'FY{yy}_FMRs?(_revised)?\.xlsx?$', u, re.I)]
         safmr = [u for u in found if re.search(rf'fy{y}_safmrs?(_revised)?\.xlsx?$', u, re.I)]
-        county += [f'https://www.huduser.gov/portal/datasets/fmr/fmr{y}/FY{yy}_FMRs.xlsx', f'https://www.huduser.gov/portal/datasets/fmr/fmr{y}/FY{yy}_FMRs_revised.xlsx']
-        safmr += [f'https://www.huduser.gov/portal/datasets/fmr/fmr{y}/fy{y}_safmrs.xlsx', f'https://www.huduser.gov/portal/datasets/fmr/fmr{y}/fy{y}_safmrs_revised.xlsx']
+        b = f'https://www.huduser.gov/portal/datasets/fmr/fmr{y}/'
+        safmr = [u for u in found if re.search(rf'(fy{y}|FY{yy})_safmrs?(_revised)?\.xlsx?$', u, re.I)]
+        county += [b + f'FY{yy}_FMRs_revised.xlsx', b + f'FY{yy}_FMRs.xlsx']
+        safmr += [b + f'fy{y}_safmrs_revised.xlsx', b + f'FY{yy}_safmrs_revised.xlsx', b + f'FY{yy}_safmrs.xlsx', b + f'fy{y}_safmrs.xlsx']
         uc, us_ = first_ok(county), first_ok(safmr)
         if uc and us_:
             sheets_to_csv(download(uc, f'fmr_{y}.xlsx'), 'fmr_county')
