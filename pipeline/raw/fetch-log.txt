@@ -1,90 +1,9 @@
-21:20:36 ==> acs
-21:20:36 ACS 5-year summary files 2024
-21:20:37   downloaded acs2024_B01003.dat 18.3 MB
-21:20:37   table B01003
-21:20:37   downloaded acs2024_B25001.dat 17.8 MB
-21:20:37   table B25001
-21:20:38   downloaded acs2024_B25002.dat 23.4 MB
-21:20:38   table B25002
-21:20:38   downloaded acs2024_B25003.dat 26.9 MB
-21:20:39   table B25003
-21:20:39   downloaded acs2024_B25077.dat 18.5 MB
-21:20:39   table B25077
-21:20:40   downloaded acs2024_B25076.dat 18.5 MB
-21:20:41   table B25076
-21:20:41   downloaded acs2024_B25078.dat 18.6 MB
-21:20:42   table B25078
-21:20:42   downloaded acs2024_B25064.dat 17.3 MB
-21:20:42   table B25064
-21:20:43   downloaded acs2024_B25031.dat 38.1 MB
-21:20:43   table B25031
-21:20:43   downloaded acs2024_B25035.dat 15.4 MB
-21:20:44   table B25035
-21:20:44   downloaded acs2024_B25018.dat 15.6 MB
-21:20:44   table B25018
-21:20:44   downloaded acs2024_B25024.dat 47.9 MB
-21:20:45   table B25024
-21:20:45   wrote raw/acs_state.csv.gz 52 rows
-21:20:45   wrote raw/acs_county.csv.gz 3222 rows
-21:20:48   wrote raw/acs_tract.csv.gz 85382 rows
-21:20:48   wrote raw/acs_place.csv.gz 32330 rows
-21:20:49   wrote raw/acs_zcta.csv.gz 33772 rows
-/home/runner/work/buildocrat-us-value-book/buildocrat-us-value-book/pipeline/fetch.py:501: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+21:25:56 ==> fmr
+21:26:36   HUD page not read https://www.huduser.gov/portal/datasets/fmr.html: HTTP 202
+21:26:37   huduser.gov files not reachable; using HUD ArcGIS services
+21:26:38   wrote raw/fmrgis__Fair_Market_Rents_0.csv.gz 2622 rows
+21:26:46   wrote raw/fmrgis__HUD_PDR_Small_Area_Fair_Market_Rents_0.csv.gz 33791 rows
+21:26:55   wrote raw/fmrgis__HUD_PDR_Small_Area_Fair_Market_Rents_1.csv.gz 51895 rows
+/home/runner/work/buildocrat-us-value-book/buildocrat-us-value-book/pipeline/fetch.py:538: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
   RUN['fetched_' + k] = datetime.datetime.utcnow().isoformat(timespec='minutes') + ('' if k not in failed else ' FAILED')
-21:20:49 ==> fmr
-21:21:30   HUD page not read https://www.huduser.gov/portal/datasets/fmr.html: HTTP 202
-Traceback (most recent call last):
-  File "/home/runner/work/buildocrat-us-value-book/buildocrat-us-value-book/pipeline/fetch.py", line 496, in <module>
-    SOURCES[k]()
-  File "/home/runner/work/buildocrat-us-value-book/buildocrat-us-value-book/pipeline/fetch.py", line 370, in hud_fmr
-    raise RuntimeError('no HUD FMR files found')
-RuntimeError: no HUD FMR files found
-21:21:33 FAILED fmr no HUD FMR files found - KEEPING last run
-21:21:33 ==> hpi
-21:21:34   downloaded hpi_county.xlsx 5.3 MB
-21:21:38   wrote raw/hpi_county__county.csv.gz 106256 rows
-21:21:39   downloaded hpi_zip5.xlsx 39.8 MB
-21:22:09   wrote raw/hpi_zip5__ZIP5.csv.gz 689537 rows
-21:22:10   downloaded hpi_state_q.txt 0.2 MB
-21:22:10   wrote raw/hpi_state_q.csv.gz 10505 rows
-21:22:10   downloaded hpi_po_monthly.xlsx 0.1 MB
-21:22:10   wrote raw/hpi_po_monthly__HPI_PO_monthly_hist.csv.gz 429 rows
-21:22:11   downloaded hpi_po_state_q.txt 0.3 MB
-21:22:11   wrote raw/hpi_po_state_q.csv.gz 7242 rows
-/home/runner/work/buildocrat-us-value-book/buildocrat-us-value-book/pipeline/fetch.py:501: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
-  RUN['fetched_' + k] = datetime.datetime.utcnow().isoformat(timespec='minutes') + ('' if k not in failed else ' FAILED')
-21:22:11 ==> soc
-21:22:12   downloaded soc_contractpricesqft.xls 0.1 MB
-21:22:12   wrote raw/soc_contractpricesqft__ContractPriceSqFt.csv.gz 154 rows
-21:22:12   wrote raw/soc_contractpricesqft__ContractMedAvgPriceSqFt.csv.gz 56 rows
-21:22:13   downloaded soc_soldpricesqft.xls 0.1 MB
-21:22:13   wrote raw/soc_soldpricesqft__SoldPriceSqFt.csv.gz 153 rows
-21:22:13   wrote raw/soc_soldpricesqft__SoldPriceSqFtAttach.csv.gz 153 rows
-21:22:13   wrote raw/soc_soldpricesqft__SoldPriceSqFtDetach.csv.gz 153 rows
-21:22:13   wrote raw/soc_soldpricesqft__SoldPriceSqFtPR.csv.gz 113 rows
-21:22:13   wrote raw/soc_soldpricesqft__SoldMedAvgPPSF.csv.gz 51 rows
-21:22:13   wrote raw/soc_soldpricesqft__SoldMedAvgPPSFAttach.csv.gz 51 rows
-21:22:13   wrote raw/soc_soldpricesqft__SoldMedAvgPPSFDetach.csv.gz 51 rows
-21:22:13   downloaded soc_lotsize.xls 0.1 MB
-21:22:13   wrote raw/soc_lotsize__SFTotalLot.csv.gz 125 rows
-21:22:13   wrote raw/soc_lotsize__SFForSaleLot.csv.gz 125 rows
-21:22:13   wrote raw/soc_lotsize__SFContrLot.csv.gz 126 rows
-21:22:13   wrote raw/soc_lotsize__SFOwnerLot.csv.gz 126 rows
-21:22:13   wrote raw/soc_lotsize__SFTotalMedAvgLot.csv.gz 39 rows
-21:22:13   wrote raw/soc_lotsize__SFForSaleMedAvgLot.csv.gz 39 rows
-21:22:13   wrote raw/soc_lotsize__SFContrMedAvgLot.csv.gz 40 rows
-21:22:13   wrote raw/soc_lotsize__SFOwnerMedAvgLot.csv.gz 41 rows
-21:22:14   downloaded soc_squarefeet.xls 0.2 MB
-21:22:14   wrote raw/soc_squarefeet__SFTotalSqFt.csv.gz 170 rows
-21:22:14   wrote raw/soc_squarefeet__SFForSaleSqFt.csv.gz 171 rows
-21:22:14   wrote raw/soc_squarefeet__SFContrSqFt.csv.gz 171 rows
-21:22:14   wrote raw/soc_squarefeet__SFOwnerSqFt.csv.gz 171 rows
-21:22:14   wrote raw/soc_squarefeet__SFTotalMedAvgSqFt.csv.gz 75 rows
-21:22:14   wrote raw/soc_squarefeet__SFForSaleMedAvgSqFt.csv.gz 75 rows
-21:22:14   wrote raw/soc_squarefeet__SFContrMedAvgSqFt.csv.gz 75 rows
-21:22:14   wrote raw/soc_squarefeet__SFOwnerMedAvgSqFt.csv.gz 75 rows
-21:22:14   wrote raw/soc_squarefeet__SFTotalMedAvgSqFtFinance.csv.gz 75 rows
-21:22:14   wrote raw/soc_squarefeet__SFForSaleMedAvgSqFtFinance.csv.gz 75 rows
-21:22:14   wrote raw/soc_squarefeet__SFContrMedAvgSqFtFinance.csv.gz 71 rows
-21:22:14   wrote raw/soc_squarefeet__SFOwnerMedAvgSqFtFinance.csv.gz 71 rows
-21:22:14 done; failed: ['fmr']
+21:26:55 done; failed: none
