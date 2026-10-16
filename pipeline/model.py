@@ -412,6 +412,31 @@ if os.path.exists(fa):
             zz[z].append(vals)
     for z, vs in zz.items():
         FMR_Z[z] = [stt.median([v[b] for v in vs if v[b]] or [0]) for b in range(5)]
+# HUD eGIS (ArcGIS) layout: FMR areas (metro areas by CBSA code, non-metro counties by FIPS) and ZIP-level SAFMRs
+fa = os.path.join(RAW, 'fmrgis__Fair_Market_Rents_0.csv.gz')
+if os.path.exists(fa):
+    by_cbsa_fmr = collections.defaultdict(list)
+    it = rows('fmrgis__Fair_Market_Rents_0.csv.gz'); head = next(it); H = {h: i for i, h in enumerate(head)}
+    for r in it:
+        code = r[H['FMR_CODE']]; vals = [num(r[H[f'FMR_{b}BDR']]) for b in range(5)]
+        if not vals[2]:
+            continue
+        if code.startswith('NCNTY'):
+            FMR_C[code[5:10]] = vals
+        elif code.startswith('METRO'):
+            by_cbsa_fmr[code[5:10]].append(vals)
+    for f, cb in cbsa.items():
+        if f not in FMR_C and cb['code'] in by_cbsa_fmr:
+            vs = by_cbsa_fmr[cb['code']]
+            FMR_C[f] = [stt.median([v[b] for v in vs]) for b in range(5)]
+    zz = collections.defaultdict(list)
+    it = rows('fmrgis__HUD_PDR_Small_Area_Fair_Market_Rents_1.csv.gz'); head = next(it); H = {h: i for i, h in enumerate(head)}
+    for r in it:
+        z = str(r[H['ID']]).split('.')[0].zfill(5); vals = [num(r[H[f'SAFMR_{b}BR']]) for b in range(5)]
+        if vals[2] and z != '00000':
+            zz[z].append(vals)
+    for z, vs in zz.items():
+        FMR_Z[z] = [stt.median([v[b] for v in vs if v[b]] or [0]) for b in range(5)]
 log(' HUD FMR counties', len(FMR_C), 'ZIP codes', len(FMR_Z))
 if not FMR_C:
     sys.exit('HUD Fair Market Rents missing: run python pipeline/fetch.py fmr')
@@ -441,14 +466,18 @@ log(' farmland: county census values', len(NASS_C), 'state survey to', NASS_Y)
 
 
 def farm_county(f, st):
+    """Farmland per acre: Census of Agriculture county value (incl. buildings) moved to the latest survey year,
+    capped at 3x the state average (city counties with little farmland report building-heavy values)."""
     s = NASS_S.get(st, {})
     latest = s.get(NASS_Y)
+    v = latest
     if f in NASS_C:
         y, v = NASS_C[f]
         if latest and s.get(y):
-            return v * latest / s[y]
-        return v
-    return latest
+            v = v * latest / s[y]
+    if v and latest:
+        v = min(v, 3 * latest)
+    return v
 
 
 # ======================================================================= cost to build (Census Survey of Construction)
@@ -513,6 +542,9 @@ for key in ('hv', 'hvlo', 'hvhi', 'grent'):
             c = A_C.get(t['f'], {}).get(key)
             if c and key != 'grent':
                 c *= gcache[t['f']][0]
+            if not c:
+                vals = [TL[j][key] for j in nb if j != i and TL[j].get(key)]
+                c = stt.median(vals) if vals else None
             if c:
                 t[key] = c; t['conf'] = 3
 for t in TL:
@@ -823,7 +855,7 @@ for z, (lat, lng) in zc.items():
         vals['rent2'] = FMR_Z[z][2]
     P.append({'n': 'ZIP ' + z, 't': 3, 'lat': lat, 'lng': lng, 'ci': ci, **vals, 'z': tz, 'c': conf, 'pop': (a.get('pop') or 0), 'r': 0, 'zip': z})
 # OpenStreetMap
-OSMT = {'suburb': 4, 'quarter': 4, 'neighbourhood': 4, 'neighborhood': 4, 'village': 5, 'hamlet': 6, 'locality': 6, 'subdivision': 7, 'gated': 8, 'town': 1, 'city': 1}
+OSMT = {'suburb': 4, 'quarter': 4, 'neighbourhood': 4, 'neighborhood': 4, 'village': 5, 'subdivision': 7, 'gated': 8, 'town': 1, 'city': 1}
 gp_xy = XY([p['lat'] for p in P[:NG]], [p['lng'] for p in P[:NG]]); gp_tree = cKDTree(gp_xy)
 gp_norm = [re.sub(r'[^a-z0-9]+', ' ', p['n'].lower()).strip() for p in P[:NG]]
 seen = set(); nosm = collections.Counter()

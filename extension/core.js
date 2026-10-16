@@ -12,7 +12,7 @@ var VL = (function () {
   function km(a, b, c, d) { const R = 6371, t = Math.PI / 180; const h = Math.sin((c - a) * t / 2) ** 2 + Math.cos(a * t) * Math.cos(c * t) * Math.sin((d - b) * t / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
   function derive(v, st) {
     v.acre = v.res ? v.res * SQFT_ACRE : null; v.bcost = (META.build || {})[REG[st] || 'S'] || null;
-    if (v.hv && v.res) { const lot = v.res * QLOT; v.lsh = Math.max(1, Math.min(90, 100 * lot / v.hv)); v.str = Math.max(v.hv * 0.1, v.hv - Math.min(lot, v.hv * 0.9)); }
+    v.lsh = null; v.str = null; if (v.hv && v.res) { const lot = v.res * QLOT; if (lot < 0.85 * v.hv) { v.lsh = Math.max(1, 100 * lot / v.hv); v.str = v.hv - lot; } }
     v.yld = (v.rent2 && v.hv) ? 100 * 12 * v.rent2 / v.hv : null; return v;
   }
   async function gunzipB64(txt) {

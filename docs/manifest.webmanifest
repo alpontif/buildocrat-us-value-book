@@ -49,7 +49,36 @@
       "purpose": "any"
     }
   ],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "/icons/screen-wide.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Land values across the US"
+    },
+    {
+      "src": "/icons/screen-map.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Value map by county"
+    },
+    {
+      "src": "/icons/screen-phone.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "US land values on your phone"
+    },
+    {
+      "src": "/icons/screen-phone-map.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Tap any spot for values and the ZIP code"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Value map",

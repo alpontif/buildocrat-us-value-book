@@ -25,6 +25,7 @@ META = D['meta']
 SC = {'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California','CO':'Colorado','CT':'Connecticut','DE':'Delaware','DC':'District of Columbia','FL':'Florida','GA':'Georgia','HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas','KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland','MA':'Massachusetts','MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana','NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico','NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma','OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota','TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington','WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming'}
 QLOT, ACRE = 10890, 43560
 e = html.escape
+import hashlib
 
 
 def slug(s):
@@ -87,6 +88,7 @@ footer{margin-top:18px;padding:22px 26px;border-radius:22px;background:#1D2675;f
  padding:12px 18px 12px 14px;border-radius:999px;text-decoration:none;box-shadow:0 10px 26px rgba(14,20,80,.28)}.wa svg{width:22px;height:22px}
 @media (max-width:640px){main{padding:24px 18px}.wa span{display:none}.wa{padding:13px}}"""
 WA_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M16 3C9 3 3.3 8.6 3.3 15.6c0 2.2.6 4.4 1.7 6.3L3 29l7.3-1.9c1.8 1 3.8 1.5 5.8 1.5 7 0 12.7-5.7 12.7-12.6C28.8 8.6 23.1 3 16 3zm0 23.2c-1.8 0-3.6-.5-5.2-1.4l-.4-.2-4.3 1.1 1.2-4.2-.3-.4a10.4 10.4 0 0 1-1.6-5.5C5.4 9.8 10.2 5.1 16 5.1s10.6 4.7 10.6 10.5S21.8 26.2 16 26.2zm5.8-7.8c-.3-.2-1.9-.9-2.2-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7.1a8.6 8.6 0 0 1-4.3-3.7c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4s-1.2 1.1-1.2 2.8 1.2 3.2 1.4 3.5 2.4 3.6 5.8 5c2.1.9 3 1 4 .8.6-.1 1.9-.8 2.2-1.5s.3-1.4.2-1.5-.3-.2-.6-.3z"/></svg>'
+CSSV = hashlib.md5(CSS.encode()).hexdigest()[:8]
 DISCLAIM = 'Indicative values for screening, budgeting and negotiation, not an appraisal. For lending, a tax appeal or legal use, hire a state-licensed or certified appraiser.'
 
 
@@ -119,7 +121,7 @@ def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None, prio='0.6')
 <link rel="alternate" type="text/plain" title="LLM summary" href="/llms.txt">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1D2675"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="US Land Values"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script><style>{CSS}</style></head><body><div class="w">
+<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script><link rel="stylesheet" href="/page.css?v={CSSV}"></head><body><div class="w">
 <header><a href="/"><b>Buildocrat US Land Value Book</b></a><nav>{' › '.join(f'<a href="/{u}">{e(n)}</a>' for n, u in crumbs[:-1])}</nav><button class="inst" type="button" data-install hidden>Install app</button></header>
 <main>{body}</main>
 <footer><p>Values as of {DLONG}, from FHFA, Census and HUD public data, updated every week. {DISCLAIM}
@@ -191,6 +193,7 @@ def qas_for(where, v, st):
 
 
 def main():
+    open(os.path.join(DOCS, 'page.css'), 'w').write(CSS)
     states = {s['c']: s for s in D['states']}
     counties = D['counties']
     for f in os.listdir(DOCS):  # clear generated pages from the last run

@@ -55,7 +55,7 @@ const regionOf=st=>REG[st]||'S';
 function derive(v,st){ // measures derived from the modelled values
   v.acre=v.res?v.res*SQFT_ACRE:null;
   v.bcost=(META.build||{})[regionOf(st)]||null;
-  if(v.hv&&v.res){ const lot=v.res*QLOT; v.lsh=Math.max(1,Math.min(90,100*lot/v.hv)); v.str=Math.max(v.hv*0.1,v.hv-Math.min(lot,v.hv*0.9)); }
+  v.lsh=null; v.str=null; if(v.hv&&v.res){ const lot=v.res*QLOT; if(lot<0.85*v.hv){ v.lsh=Math.max(1,100*lot/v.hv); v.str=v.hv-lot; } } // in condo and apartment areas a quarter-acre lot outprices the typical home, so no split is shown
   v.yld=(v.rent2&&v.hv)?100*12*v.rent2/v.hv:null;
   return v;
 }
@@ -245,7 +245,7 @@ const cell=(label,val,unit)=>`<div><span>${label}</span><b>${val}</b><small>${un
 function valueBlock(v,where,note){
   const zn=v.zone!=null&&META.zones?`<span class="ztag" style="--zc:${ZONEC[v.zone]}">${esc(META.zones[v.zone])}</span>`:'';
   if(TAB==='land') return `<div><p class="eyebrow">Residential land${where}</p><div class="headline"><span class="big num">${short(v.res)}</span><span class="muted">per sq ft</span>${zn}</div><p class="note">${note}</p></div>
-   <div class="vals">${cell('Per acre',short(v.acre),'residential land')}${cell('Quarter-acre lot',short(v.res*QLOT),'10,890 sq ft')}${cell('City lot',short(v.res*5000),'5,000 sq ft')}${cell('Land share of a typical home',fmtL('lsh',v.lsh),'quarter-acre lot basis')}${cell('Farmland',v.farm?short(v.farm):'\u2013',v.farm?'per acre, county average':'built-up, n/a')}${cell('One acre, 5 acres',v.acre?short(v.acre)+' \u00b7 '+short(v.acre*5*0.8):'\u2013','larger tracts sell for less per acre')}</div>`;
+   <div class="vals">${cell('Per acre',short(v.acre),'residential land')}${cell('Quarter-acre lot',short(v.res*QLOT),'10,890 sq ft')}${cell('City lot',short(v.res*5000),'5,000 sq ft')}${cell('Land share of a typical home',fmtL('lsh',v.lsh),v.lsh?'quarter-acre lot basis':'condo and apartment area')}${cell('Farmland',v.farm?short(v.farm):'\u2013',v.farm?'per acre, county average':'built-up, n/a')}${cell('One acre, 5 acres',v.acre?short(v.acre)+' \u00b7 '+short(v.acre*5*0.8):'\u2013','larger tracts sell for less per acre')}</div>`;
   if(TAB==='bld') return `<div><p class="eyebrow">Typical home${where}</p><div class="headline"><span class="big num">${short(v.hv)}</span><span class="muted">median value</span>${zn}</div><p class="note">${note}</p></div>
    <div class="vals">${cell('Entry-level home',short(v.hvlo),'lower quartile')}${cell('Upper-end home',short(v.hvhi),'upper quartile')}${cell('Structure value',short(v.str),'typical home minus its land')}${cell('Cost to build new',v.bcost?short(v.bcost):'\u2013','per sq ft, '+REGN[regionOf(curSt())]+', no land')}${cell('2,000 sq ft home, new',v.bcost?short(v.bcost*2000):'\u2013','construction only')}${cell('Land share',fmtL('lsh',v.lsh),'of the typical home')}</div>`;
   return `<div><p class="eyebrow">Rent, 2-bedroom${where}</p><div class="headline"><span class="big num">${short(v.rent2)}</span><span class="muted">per month</span>${zn}</div><p class="note">${note}</p></div>
@@ -266,7 +266,7 @@ function nearbyEvidence(la,lo){
   if(TAB!=='land') return '';
   const rows=EV.map(e=>({e,d:km(la,lo,e[2],e[3])})).filter(x=>x.d<=12).sort((a,b)=>a.d-b.d).slice(0,6);
   if(!rows.length) return `<p class="note">No published FHFA land price for a ZIP code within 12 km. Land here is modelled from home values and the county figure.</p>`;
-  return `<div><p class="eyebrow" style="margin-bottom:4px">Published FHFA land prices within 12 km</p><table class="mini">${rows.map(({e,d})=>`<tr><td>ZIP ${esc(e[0])} <span class="muted small">${esc(e[1])} \u00b7 ${d.toFixed(1)} km</span></td><td class="r">${short(e[4]/SQFT_ACRE)}/sq ft</td><td class="r muted">${e[5]}</td></tr>`).join('')}</table><p class="note">Per-acre values for a standard quarter-acre lot, as published by FHFA for the year shown; the book brings them up to date with FHFA's house price index.</p></div>`; }
+  return `<div><p class="eyebrow" style="margin-bottom:4px">Published FHFA land prices within 12 km</p><table class="mini">${rows.map(({e,d})=>`<tr><td>ZIP ${esc(e[0])} <span class="muted small">${esc(e[1])} \u00b7 ${d.toFixed(1)} km</span></td><td class="r">${short(e[4]/SQFT_ACRE)}/sq ft</td><td class="r muted">${e[5]}</td></tr>`).join('')}</table><p class="note">Per-acre values for a standard quarter-acre lot as FHFA publishes them (2012–2022 data at 2015 prices); the book brings them up to date with FHFA's house price index.</p></div>`; }
 function crumbs(parts){ return `<div class="crumbs">${parts.map(([t,a],i)=>(a?`<button type="button" data-go="${a}">${esc(t)}</button>`:`<span>${esc(t)}</span>`)+(i<parts.length-1?'<span>\u203a</span>':'')).join('')}</div>`; }
 function ancestors(j){ const out=[]; let p=PL.pa[j], n=0; while(p>=0&&n<5){ out.unshift(p); p=PL.pa[p]; n++; } return out; }
 let SEL=null, RER=null;
@@ -406,7 +406,7 @@ function search(q0){
   for(const s of ST) if(norm(SC[s.c]).startsWith(q)||s.c.toLowerCase()===q) out.push({k:'s',id:s.c,label:SC[s.c],sub:'State \u00b7 largest city '+s.big,score:0});
   LG.forEach((g,i)=>{ if(stf&&g.s!==stf) return; const n=norm(g.n); if(n.startsWith(q)) out.push({k:'l',id:i,label:g.n,sub:SC[g.s],score:1}); else if(q.length>=4&&n.includes(q)) out.push({k:'l',id:i,label:g.n,sub:SC[g.s],score:3}); });
   const sub=j=>TYPEN[PL.t[j]]+' \u00b7 '+(PL.pa[j]>=0?PL.n[PL.pa[j]]+', ':'')+LG[PL.g[j]].n+', '+LG[PL.g[j]].s;
-  for(let j=0;j<SIDX.length&&out.length<500;j++){ if(PL.t[j]===3) continue; if(stf&&LG[PL.g[j]].s!==stf) continue; const n=SIDX[j]; if(n.startsWith(q)) out.push({k:'p',id:j,label:PL.n[j],sub:sub(j),score:2+DRANK[PL.t[j]]*0.1-Math.log10(PL.h[j]+1)*0.001}); else if(q.length>=4&&n.includes(' '+q)) out.push({k:'p',id:j,label:PL.n[j],sub:sub(j),score:4+DRANK[PL.t[j]]*0.1}); }
+  for(let j=0;j<SIDX.length&&out.length<500;j++){ if(PL.t[j]===3) continue; if(stf&&LG[PL.g[j]].s!==stf) continue; const n=SIDX[j]; if(n===q&&PL.t[j]<=1) out.push({k:'p',id:j,label:PL.n[j],sub:sub(j),score:(PL.t[j]===0?0.3:0.8)}); else if(n.startsWith(q)) out.push({k:'p',id:j,label:PL.n[j],sub:sub(j),score:2+DRANK[PL.t[j]]*0.1-Math.log10(PL.h[j]+1)*0.001}); else if(q.length>=4&&n.includes(' '+q)) out.push({k:'p',id:j,label:PL.n[j],sub:sub(j),score:4+DRANK[PL.t[j]]*0.1}); }
   return out.sort((a,b)=>a.score-b.score).slice(0,14);
 }
 const qi=$('q'), sg=$('sugg'); let sres=[], sact=-1;
@@ -480,7 +480,7 @@ function tables(){
   TBL();
   // published FHFA land prices by ZIP code
   const eT=sortable($('etable'),[
-    {k:'z',h:'ZIP code',asc:true,val:r=>r[0]},{k:'pl',h:'Place',asc:true,val:r=>r[1]},{k:'st',h:'State',asc:true,val:r=>r[6]},{k:'acre',h:'Per acre (published)',r:1,def:1,val:r=>r[4]},{k:'sf',h:'Per sq ft',r:1,val:r=>r[4]},{k:'yr',h:'Year',r:1,val:r=>r[5]},{k:'x',h:'',sort:false}
+    {k:'z',h:'ZIP code',asc:true,val:r=>r[0]},{k:'pl',h:'Place',asc:true,val:r=>r[1]},{k:'st',h:'State',asc:true,val:r=>r[6]},{k:'acre',h:'Per acre (published)',r:1,def:1,val:r=>r[4]},{k:'sf',h:'Per sq ft',r:1,val:r=>r[4]},{k:'yr',h:'Price level',r:1,val:r=>r[5]},{k:'x',h:'',sort:false}
   ],()=>{ const q=norm($('eq').value), s=$('est').value; return EV.filter(e=>(!s||e[6]===s)&&(!q||e[0].startsWith(q)||norm(e[1]).includes(q))); },
   e=>`<tr><td class="mono">${esc(e[0])}</td><td class="nm">${esc(e[1])}</td><td class="mono">${e[6]}</td><td class="r num"><b>${short(e[4])}</b></td><td class="r num">${short(e[4]/SQFT_ACRE)}</td><td class="r num">${e[5]}</td><td><button class="linkbtn" type="button" data-at="${e[2]},${e[3]}">Map</button></td></tr>`,$('epager'));
   for(const s of [...ST].sort((a,b)=>SC[a.c].localeCompare(SC[b.c]))) $('est').insertAdjacentHTML('beforeend',`<option value="${s.c}">${esc(SC[s.c])}</option>`);
