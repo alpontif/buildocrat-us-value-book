@@ -367,7 +367,44 @@ def hud_fmr():
             sheets_to_csv(download(us_, f'safmr_{y}.xlsx'), 'fmr_zip')
             RUN['hud_fmr'] = {'fy': y, 'county': uc, 'zip': us_}
             return
-    raise RuntimeError('no HUD FMR files found')
+    log('  huduser.gov files not reachable; using HUD ArcGIS services')
+    hud_arcgis()
+
+
+ARCGIS_HUD = ['https://services.arcgis.com/VTyQ9soqVukalItT/ArcGIS/rest/services/Fair_Market_Rents/FeatureServer',
+              'https://services.arcgis.com/VTyQ9soqVukalItT/ArcGIS/rest/services/HUD_PDR_Small_Area_Fair_Market_Rents/FeatureServer']
+
+
+def hud_arcgis():
+    """HUD's Fair Market Rents from its ArcGIS open-data services (huduser.gov answers scripts with a bot check)."""
+    got = []
+    for svc in ARCGIS_HUD:
+        info = get(svc + '?f=json').json()
+        desc = ' '.join(str(info.get(k, '')) for k in ('serviceDescription', 'description'))
+        fy = re.findall(r'(?:FY|Fiscal Year)\s*(20\d\d)', desc)
+        for lyr in (info.get('layers') or []) + (info.get('tables') or []):
+            lid = lyr['id']; base = f'{svc}/{lid}/query'
+            out, off, head = [], 0, None
+            while True:
+                j = get(base, params={'where': '1=1', 'outFields': '*', 'returnGeometry': 'false', 'f': 'json', 'resultOffset': off, 'resultRecordCount': 1000}).json()
+                feats = j.get('features') or []
+                if not feats:
+                    break
+                for f in feats:
+                    a = f['attributes']
+                    if head is None:
+                        head = list(a)
+                    out.append([a.get(k) for k in head])
+                off += len(feats)
+                if not j.get('exceededTransferLimit') and len(feats) < 1000:
+                    break
+            if head:
+                nm = re.sub(r'[^A-Za-z0-9]+', '_', svc.split('/services/')[1].split('/')[0] + '_' + str(lid))
+                write_csv_gz(os.path.join(RAW, f'fmrgis__{nm}.csv.gz'), head, out)
+                got.append((nm, fy[:1]))
+    if not got:
+        raise RuntimeError('HUD ArcGIS services returned nothing')
+    RUN['hud_fmr'] = {'source': 'HUD eGIS (ArcGIS)', 'layers': got, 'fy': (got[-1][1] or [''])[0]}
 
 
 # ---------------------------------------------------------------- metro areas (CBSA delineation)

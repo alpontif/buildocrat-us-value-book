@@ -1,5 +1,2 @@
 # Sources to fetch on the next push of this file (one per line, blank = all)
-acs
 fmr
-hpi
-soc
