@@ -15,16 +15,16 @@ var VL = (function () {
     v.lsh = null; v.str = null; if (v.hv && v.res) { const lot = v.res * QLOT; if (lot < 0.85 * v.hv) { v.lsh = Math.max(1, 100 * lot / v.hv); v.str = v.hv - lot; } }
     v.yld = (v.rent2 && v.hv) ? 100 * 12 * v.rent2 / v.hv : null; return v;
   }
-  async function gunzipB64(txt) {
-    const bin = atob(txt.trim()); const buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  async function gunzipBuf(ab) {
+    const buf = new Uint8Array(ab);
     if (buf[0] === 0x1f && buf[1] === 0x8b) { const ds = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')); return JSON.parse(await new Response(ds).text()); }
     return JSON.parse(new TextDecoder().decode(buf));
   }
   const undelta = a => { for (let j = 1; j < a.length; j++) a[j] += a[j - 1]; };
   async function load(base) {
-    const txt = u => fetch(base + u).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.text(); });
+    const bin = u => fetch(base + u).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.arrayBuffer(); }).then(gunzipBuf);
     const [a, b, c] = await Promise.all([fetch(base + 'data/counties.json').then(r => { if (!r.ok) throw new Error('counties ' + r.status); return r.json(); }),
-      txt('data/places.b64.txt').then(gunzipB64), txt('data/tracts.b64.txt').then(gunzipB64)]);
+      bin('data/places.bin'), bin('data/tracts.bin')]);
     LG = a.counties; META = a.meta; PL = b; TR = c;
     undelta(PL.la); undelta(PL.lo); undelta(TR.la); undelta(TR.lo);
     PL.pa = new Int32Array(PL.n.length).fill(-1);

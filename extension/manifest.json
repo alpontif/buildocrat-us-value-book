@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Buildocrat Value Lens (US)",
   "short_name": "Value Lens US",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Hover over Google Maps or OpenStreetMap anywhere in the US to see land, home and rental values from the Buildocrat US Land Value Book.",
   "homepage_url": "https://valued.buildocrat.store/",
   "icons": {

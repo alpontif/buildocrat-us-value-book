@@ -2,13 +2,13 @@
    Pages and data: network first (so the weekly update shows straight away), cached copy when offline or slow.
    Scripts, icons, fonts, the map library: cached copy first, refreshed in the background.
    Mapbox map tiles are never stored; ZIP shape tiles are kept once looked at. */
-const VERSION = 'e4ee184a09';
+const VERSION = '8d0de15478';
 const SHELL = 'usvb-shell-' + VERSION;  // one cache per edition; the old one is deleted when a new edition activates
 const PRECACHE = ['/', '/app.js', '/config.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
-  '/data/counties.json', '/data/places.b64.txt', '/data/tracts.b64.txt', '/data/evidence.json', '/offline.html'];
+  '/data/counties.json', '/data/places.bin', '/data/tracts.bin', '/data/evidence.json', '/offline.html'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(SHELL).then(c => Promise.all(PRECACHE.map(u => c.add(new Request(u, { cache: 'reload' })).catch(() => {})))));
+  e.waitUntil(caches.open(SHELL).then(c => Promise.all(PRECACHE.map(u => c.add(new Request(u, { cache: 'no-cache' })).catch(() => {})))));
   self.skipWaiting();
 });
 self.addEventListener('activate', e => {

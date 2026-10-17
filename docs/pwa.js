@@ -1,7 +1,9 @@
 /* Install-as-app support for every page: registers the service worker and drives the "Install app" buttons ([data-install]). */
 (() => {
   'use strict';
-  if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {}));
+  /* the map page registers the offline cache only once its data has arrived, so slow connections download the data once, not twice */
+  const regSW = () => navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+  if ('serviceWorker' in navigator) { if (document.getElementById('mapsec')) addEventListener('usvb-ready', regSW, { once: true }); else addEventListener('load', regSW); }
   const ua = navigator.userAgent;
   const standalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches || navigator.standalone === true;
   const ios = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

@@ -2,8 +2,8 @@
 
 Reads the source files in pipeline/raw/ (fetch.py) and writes:
   docs/data/counties.json      states, counties (with simplified outlines), state borders, metadata
-  docs/data/tracts.b64.txt     every census tract's values (the field behind "value any spot")
-  docs/data/places.b64.txt     cities, towns, ZIP codes, neighborhoods, villages, subdivisions, gated communities
+  docs/data/tracts.bin         every census tract's values (the field behind "value any spot")
+  docs/data/places.bin         cities, towns, ZIP codes, neighborhoods, villages, subdivisions, gated communities
   docs/data/evidence.json      FHFA's published land price for each ZIP code
   docs/data/zip/<tile>.json    ZIP Code Tabulation Area outlines, 2-degree tiles, for the ZIP at a clicked spot
   pipeline/out/pages.json      cities and per-county highlights for pages.py
@@ -913,9 +913,8 @@ for s in STATES:
     s['np'] = sum(c['np'] for c in CNT if c['s'] == s['c'])
 
 
-def b64gz(obj):
-    raw = json.dumps(obj, separators=(',', ':')).encode()
-    return base64.b64encode(gzip.compress(raw, 9)).decode()
+def gzbytes(obj):
+    return gzip.compress(json.dumps(obj, separators=(',', ':')).encode(), 9, mtime=0)
 
 
 def deltas(a):
@@ -933,7 +932,7 @@ for i, par in enumerate(PAR):
 places = {'n': [p['n'] for p in PO], 't': [p['t'] for p in PO], 'la': deltas(la), 'lo': deltas(lo), 'g': [p['ci'] for p in PO],
           'v': [max(1, round((p.get('res') or 0.3) * 100)) for p in PO], 'h': [round((p.get('hv') or 0) / 100) for p in PO],
           'r': [round(p.get('rent2') or 0) for p in PO], 'z': [p['z'] for p in PO], 'c': [p['c'] for p in PO], 'pk': pk, 'pp': pp}
-open(os.path.join(DOCS, 'data', 'places.b64.txt'), 'w').write(b64gz(places))
+open(os.path.join(DOCS, 'data', 'places.bin'), 'wb').write(gzbytes(places))
 # tracts (sorted by GEOID)
 ci_of = {c['f']: i for i, c in enumerate(CNT)}
 tr = {'la': deltas([round(t['lat'] * 1e4) for t in TL]), 'lo': deltas([round(t['lng'] * 1e4) for t in TL]), 'g': [ci_of[t['f']] for t in TL],
@@ -941,7 +940,7 @@ tr = {'la': deltas([round(t['lat'] * 1e4) for t in TL]), 'lo': deltas([round(t['
       'hl': [round((t.get('hvlo') or 0) / 100) for t in TL], 'hh': [round((t.get('hvhi') or 0) / 100) for t in TL],
       'r1': [t.get('rent1') or 0 for t in TL], 'r2': [t.get('rent2') or 0 for t in TL], 'r3': [t.get('rent3') or 0 for t in TL], 'r4': [t.get('rent4') or 0 for t in TL],
       'z': [t['z'] for t in TL], 'c': [t['conf'] for t in TL]}
-open(os.path.join(DOCS, 'data', 'tracts.b64.txt'), 'w').write(b64gz(tr))
+open(os.path.join(DOCS, 'data', 'tracts.bin'), 'wb').write(gzbytes(tr))
 
 # evidence: FHFA published ZIP land values (2015 price level, standardized quarter-acre lot, shown per acre)
 inc_xy = [(i, p) for i, p in enumerate(P[:NG]) if p['t'] in (0, 1, 2)]
@@ -1022,5 +1021,5 @@ for ci, ps in byci.items():
     top[COUNTIES[ci]['f']] = [{'n': p['n'], 'k': TN[p['t']], 'res': r3(p['res']), 'hv': r3(p.get('hv'))} for p in ps[:8]]
 json.dump({'cities': cities, 'top': top}, open(os.path.join(OUT, 'pages.json'), 'w'), separators=(',', ':'))
 sz = lambda f: os.path.getsize(os.path.join(DOCS, 'data', f)) / 1e6
-log(f'wrote counties.json {sz("counties.json"):.1f} MB, places {sz("places.b64.txt"):.1f} MB, tracts {sz("tracts.b64.txt"):.1f} MB, evidence {sz("evidence.json"):.1f} MB, {len(tiles)} ZIP tiles, {len(cities)} city pages')
+log(f'wrote counties.json {sz("counties.json"):.1f} MB, places {sz("places.bin"):.1f} MB, tracts {sz("tracts.bin"):.1f} MB, evidence {sz("evidence.json"):.1f} MB, {len(tiles)} ZIP tiles, {len(cities)} city pages')
 log('national median: land $%.2f/sq ft, home $%s, 2-bed $%s' % (nat['res'], f"{nat['hv']:,.0f}", f"{nat['rent2']:,.0f}"))

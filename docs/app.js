@@ -34,21 +34,27 @@ const nfmt=n=>Number(n).toLocaleString('en-US');
 /* ---------- data ---------- */
 let ST=[], LG=[], PL=null, TR=null, EV=[], META={}, BORDERS=[];
 const STI={};
-async function gzb64(u){ const txt=(await (await fetch(u)).text()).trim(); const bin=atob(txt); const buf=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
+async function gzbin(u){ const r=await fetch(u); if(!r.ok) throw new Error(u+' '+r.status); const buf=new Uint8Array(await r.arrayBuffer());
   if(buf[0]===0x1f&&buf[1]===0x8b){ const ds=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')); return JSON.parse(await new Response(ds).text()); }
-  return JSON.parse(new TextDecoder().decode(buf)); }
+  return JSON.parse(new TextDecoder().decode(buf)); }  // already decompressed by the server
 function undelta(a){ for(let j=1;j<a.length;j++) a[j]+=a[j-1]; return a; }
-async function load(){
-  const [a,b,c,d]=await Promise.all([fetch('data/counties.json').then(r=>r.json()), gzb64('data/places.b64.txt'), gzb64('data/tracts.b64.txt'), fetch('data/evidence.json').then(r=>r.json())]);
-  ST=a.states; LG=a.counties; META=a.meta; BORDERS=a.borders; PL=b; TR=c; EV=d;
-  undelta(PL.la); undelta(PL.lo); undelta(TR.la); undelta(TR.lo);
+async function loadCore(){ // counties, states and borders: enough to draw the map and the national figures
+  const a=await fetch('data/counties.json').then(r=>{ if(!r.ok) throw new Error('counties '+r.status); return r.json(); });
+  ST=a.states; LG=a.counties; META=a.meta; BORDERS=a.borders;
   ST.forEach((s,i)=>STI[s.c]=i);
-  PL.pa=new Int32Array(PL.n.length).fill(-1); PL.ch=new Map();
-  if(PL.pk){ let k=0; PL.pk.forEach((dd,i)=>{ k+=dd; const p=PL.pp[i]; PL.pa[k]=p; let a2=PL.ch.get(p); if(!a2){a2=[];PL.ch.set(p,a2);} a2.push(k); }); }
   for(const g of LG) derive(g.v,g.s);
   for(const s of ST) derive(s.v,s.c);
   for(const g of LG){ const zs=g.zs||[]; let best=null; for(const r of zs){ if(!best||r[1]>best[1]) best=r; } g.v.zone=best?best[0]:null; }
 }
+async function loadRest(){ // places, census tracts and land evidence: loaded behind the map
+  const [b,c,d]=await Promise.all([gzbin('data/places.bin'), gzbin('data/tracts.bin'), fetch('data/evidence.json').then(r=>r.json())]);
+  undelta(b.la); undelta(b.lo); undelta(c.la); undelta(c.lo);
+  b.pa=new Int32Array(b.n.length).fill(-1); b.ch=new Map();
+  if(b.pk){ let k=0; b.pk.forEach((dd,i)=>{ k+=dd; const p=b.pp[i]; b.pa[k]=p; let a2=b.ch.get(p); if(!a2){a2=[];b.ch.set(p,a2);} a2.push(k); }); }
+  PL=b; TR=c; EV=d; buildIndex(); buildSearch(); // in the same tick: nothing sees PL without its index
+}
+let READY=null; // resolves once places and tracts are in; anything that needs them waits on it
+const whenReady=f=>{ if(PL&&TR) return f(); $('panel').innerHTML='<div class="loading">Loading census tracts and places\u2026</div>'; READY.then(f); };
 const REG={CT:'NE',ME:'NE',MA:'NE',NH:'NE',RI:'NE',VT:'NE',NJ:'NE',NY:'NE',PA:'NE',IL:'MW',IN:'MW',MI:'MW',OH:'MW',WI:'MW',IA:'MW',KS:'MW',MN:'MW',MO:'MW',NE:'MW',ND:'MW',SD:'MW',AZ:'W',CO:'W',ID:'W',MT:'W',NV:'W',NM:'W',UT:'W',WY:'W',AK:'W',CA:'W',HI:'W',OR:'W',WA:'W'};
 const REGN={NE:'Northeast',MW:'Midwest',S:'South',W:'West'};
 const regionOf=st=>REG[st]||'S';
@@ -91,6 +97,8 @@ function readColors(){ COL={sea:css('--sea'),land:css('--land'),edge:css('--edge
 function buildPaths(){
   lgaPaths=LG.map(g=>{ const p=new Path2D(); for(const enc of g.r){ const pts=decode(enc); pts.forEach(([lng,lat],i)=>{const [X,Y]=W2(lng,lat); i?p.lineTo(X,Y):p.moveTo(X,Y);}); p.closePath(); } return p; });
   statePaths=BORDERS.map(b=>{ const p=new Path2D(); for(const enc of b.r){ const pts=decode(enc); pts.forEach(([lng,lat],i)=>{const [X,Y]=W2(lng,lat); i?p.lineTo(X,Y):p.moveTo(X,Y);}); p.closePath(); } return {c:b.c,p}; });
+}
+function buildIndex(){
   PIDX=new Map(); const n=PL.n.length;
   for(let j=0;j<n;j++){ const k=(Math.floor(PL.lo[j]/2000))+':'+(Math.floor(PL.la[j]/2000)); let a=PIDX.get(k); if(!a){a=[];PIDX.set(k,a);} a.push(j); }
   TIDX=new Map();
@@ -136,6 +144,7 @@ function visiblePlaces(minType){
 }
 let labelsDrawn=[];
 function drawPlaces(){
+  if(!PL){ labelsDrawn=[]; return; }
   const s=view.s; labelsDrawn=[];
   const maxT = s<60?0: s<160?1: s<400?2: s<900?4: s<2000?5: 6;
   let list;
@@ -275,6 +284,7 @@ function waText(s){ return s?`Hello Buildocrat, I'm interested in ${s.name.repla
 const waHref=s=>`https://wa.me/${WA_NO}?text=${encodeURIComponent(waText(s))}`;
 function setSel(s){ SEL=s; estimate(); const a=$('wa'); if(a) a.href=waHref(s); }
 function selectPlace(j,fly=true){
+  if(!PL) return whenReady(()=>selectPlace(j,fly));
   RER=()=>selectPlace(j,false);
   const g=LG[PL.g[j]], la=PL.la[j]/1e4, lo=PL.lo[j]/1e4, v=placeVals(j), t=PL.t[j];
   selL=PL.g[j]; selState=null; selPt=[la,lo]; CUR_ST=g.s;
@@ -319,6 +329,7 @@ function selectPoint(la,lo,i){
 }
 const LTYPES=[['','All places'],['0','Cities'],['1','Towns'],['2','Communities'],['3','ZIP codes'],['4','Neighborhoods'],['5','Villages'],['7','Subdivisions'],['8','Gated communities'],['6','Hamlets']];
 function selectLGA(i,fly=true){
+  if(!PL) return whenReady(()=>selectLGA(i,fly));
   RER=()=>selectLGA(i,false);
   const g=LG[i]; selL=i; selState=null; selPt=null; CUR_ST=g.s;
   if(fly) MAPI.fitLGA(i); MAPI.refresh();
@@ -356,7 +367,7 @@ function nationalPanel(){
   selState=null; selL=-1; selPt=null; MAPI.refresh();
   const hk=TABS[TAB].head, hn=TABS[TAB].layers.find(l=>l[0]===hk)[1].toLowerCase();
   const top=[...LG.keys()].sort((a,b)=>(LG[b].v[hk]||0)-(LG[a].v[hk]||0)).slice(0,10);
-  $('panel').innerHTML=`<div class="ptitle"><div><h3>United States</h3><div class="tags"><span class="tag">50 states and DC</span><span class="tag">${nfmt(LG.length)} counties</span><span class="tag">${nfmt(PL.n.length)} places</span></div></div></div>
+  $('panel').innerHTML=`<div class="ptitle"><div><h3>United States</h3><div class="tags"><span class="tag">50 states and DC</span><span class="tag">${nfmt(LG.length)} counties</span><span class="tag">${PL?nfmt(PL.n.length)+' places':'loading places\u2026'}</span></div></div></div>
    <p class="note">Click a state, a county, a dot or any house on the map, or enter coordinates above. Switch between land, home and rental values with the tabs. Each result gives the ZIP code for the exact spot.</p>
    <div><p class="eyebrow" style="margin-bottom:4px">Highest counties, ${hn}</p><table class="mini">${top.map(i=>`<tr><td><button type="button" data-lga="${i}">${esc(LG[i].n)}</button> <span class="muted small">${LG[i].s}</span></td><td class="r">${fmtL(hk,LG[i].v[hk])}</td></tr>`).join('')}</table></div>
    <div><p class="eyebrow" style="margin-bottom:4px">States, median</p><table class="mini">${[...ST].sort((a,b)=>(b.v[hk]||0)-(a.v[hk]||0)).map(s=>`<tr><td><button type="button" data-go="s:${s.c}">${esc(SC[s.c])}</button> <span class="muted small">${esc(s.big)}</span></td><td class="r">${fmtL(hk,s.v[hk])}</td></tr>`).join('')}</table></div>`;
@@ -398,6 +409,7 @@ $('pinme').addEventListener('click',()=>{ const msg=$('pinmsg'); if(!navigator.g
 let SIDX=null, ZIPI=null;
 function buildSearch(){ SIDX=PL.n.map(norm); ZIPI=new Map(); for(let j=0;j<PL.t.length;j++) if(PL.t[j]===3) ZIPI.set(PL.n[j].slice(-5),j); }
 function search(q0){
+  if(!SIDX) return [{k:'none',label:'Loading the places directory\u2026',sub:'One moment',score:0}];
   const ll=parseSpot(q0); if(ll) return [{k:'at',id:ll,label:'Coordinates '+ll[0].toFixed(5)+', '+ll[1].toFixed(5),sub:'Value this spot',score:0}];
   const zm=String(q0).trim().match(/^(\d{5})(?:-\d{4})?$/); if(zm){ const j=ZIPI.get(zm[1]); return j!=null?[{k:'p',id:j,label:'ZIP '+zm[1],sub:LG[PL.g[j]].n+', '+LG[PL.g[j]].s,score:0}]:[{k:'none',label:'ZIP '+zm[1]+' not found',sub:'Try the town name',score:0}]; }
   let q=norm(q0); let stf=null; const m2=q.match(/^(.*?)\s+([a-z]{2})$/); if(m2&&SC[m2[2].toUpperCase()]){ q=m2[1]; stf=m2[2].toUpperCase(); }
@@ -548,7 +560,7 @@ function lgaContaining(lat,lng,quick){
   if(best<0&&!quick){ let d0=12; for(let i=0;i<LG.length;i++){ const d=km(lat,lng,LG[i].lat,LG[i].lng); if(d<d0){d0=d;best=i;} } }
   lastC=[key,best]; return best;
 }
-function pickSpot(lat,lng,fly){ const i=lgaContaining(lat,lng); if(i<0) return false; if(fly) MAPI.flyPlace(lat,lng,4); selectPoint(lat,lng,i); return true; }
+function pickSpot(lat,lng,fly){ if(!TR){ const i0=lgaContaining(lat,lng); if(i0<0) return false; whenReady(()=>pickSpot(lat,lng,fly)); return true; } const i=lgaContaining(lat,lng); if(i<0) return false; if(fly) MAPI.flyPlace(lat,lng,4); selectPoint(lat,lng,i); return true; }
 
 /* ---------- ZIP code at the exact spot (Census ZCTA shapes, loaded by area) ---------- */
 const zipTiles=new Map();
@@ -590,6 +602,7 @@ function MapboxMap(){
   const stFC={type:'FeatureCollection',features:BORDERS.map(b=>({type:'Feature',properties:{c:b.c},geometry:{type:'MultiLineString',coordinates:b.r.map(decode)}}))};
   const colr=()=>{ const e=['match',['get','k_'+layer]]; for(let i=0;i<7;i++) e.push(i,layer==='zone'?ZONEC[i]:COL.s[i]); e.push(COL.nd); return e; };
   function placesFC(){
+    if(!PL) return {type:'FeatureCollection',features:[]};
     const z=map.getZoom(), b=map.getBounds(); const maxT=z<5.5?0: z<7?1: z<8.6?2: z<10.2?4: z<11.3?5: 6;
     let js=[];
     if(z<5.5){ for(let j=0;j<PL.t.length;j++) if(PL.t[j]===0) js.push(j); }
@@ -655,6 +668,7 @@ function route(){
   const h=decodeURIComponent(location.hash.slice(1)); if(!h) return false; const [k,v]=h.split('=');
   if(k==='state'&&v&&STI[v.toUpperCase()]!=null){ selectState(v.toUpperCase()); return true; }
   if(k==='county'&&v){ const i=LG.findIndex(g=>g.f===v||(g.s+'/'+slug(g.n))===v); if(i>=0){ selectLGA(i); return true; } }
+  if(k==='zip'&&v&&!ZIPI){ READY.then(route); return true; }
   if(k==='zip'&&v&&ZIPI.has(v)){ selectPlace(ZIPI.get(v)); return true; }
   if(k==='at'&&v){ const [a,b]=v.split(',').map(Number); if(isFinite(a)&&isFinite(b)) return pickSpot(a,b,true); }
   return false;
@@ -672,16 +686,24 @@ function shared(){
 /* ---------- boot ---------- */
 (async()=>{
   readColors();
-  try{ await load(); }catch(err){ console.error(err); $('panel').innerHTML='<p class="note">The data files did not load. Reload the page to try again.</p>'; return; }
+  try{ await loadCore(); }catch(err){ console.error(err); $('panel').innerHTML='<p class="note">The data files did not load. Reload the page to try again.</p>'; return; }
+  READY=loadRest();
   $('edDate').textContent=dlong(META.date); $('sDate').textContent=dlong(META.date);
   document.querySelectorAll('.evDate').forEach(e=>e.textContent=dlong(META.date));
-  $('sPlaces').textContent=nfmt(PL.n.length); $('hPlaces').textContent=nfmt(PL.n.length); $('sTracts').textContent=nfmt(TR.la.length); $('sZips').textContent=nfmt(ZIPI?ZIPI.size:0); $('sCounties').textContent=nfmt(LG.length); $('hCounties').textContent=nfmt(LG.length);
-  buildPaths(); computeBreaks(); buildLayers(); legend(); buildSearch(); $('sZips').textContent=nfmt(ZIPI.size); $('sEv').textContent=nfmt(EV.length);
+  $('sCounties').textContent=nfmt(LG.length); $('hCounties').textContent=nfmt(LG.length); $('sTracts').textContent=nfmt(META.counts.tracts); $('sPlaces').textContent=nfmt(META.counts.places); $('hPlaces').textContent=nfmt(META.counts.places); $('sZips').textContent=nfmt(META.counts.zips);
+  buildPaths(); computeBreaks(); buildLayers(); legend();
   if(NP().mapboxToken){ try{ await loadMapbox(); if(mapboxgl.supported&&!mapboxgl.supported()) throw new Error('WebGL unavailable'); MAPI=MapboxMap(); }catch(err){ console.warn('Mapbox unavailable, using the plain map', err); MAPI=CANVAS_MAP; $('mbmap').hidden=true; canvas.hidden=false; } }
   if(MAPI===CANVAS_MAP){ resize(); fitAll(); new ResizeObserver(()=>resize()).observe(canvas); }
-  if(!shared()&&!route()) nationalPanel();
-  window.addEventListener('hashchange',route);
-  tables(); method();
+  const h0=location.hash;
+  if(!h0||!route()) nationalPanel();
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors(); MAPI.refresh();});
   new MutationObserver(()=>{readColors(); MAPI.refresh();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  try{ await READY; }catch(err){ console.error(err); $('panel').insertAdjacentHTML('beforeend','<p class="note">The places directory did not load. Reload the page to try again.</p>'); return; }
+  $('sPlaces').textContent=nfmt(PL.n.length); $('hPlaces').textContent=nfmt(PL.n.length); $('sTracts').textContent=nfmt(TR.la.length); $('sZips').textContent=nfmt(ZIPI.size); $('sEv').textContent=nfmt(EV.length);
+  const curLayer0=layer; MAPI.refresh(); if(MAPI.kind==='mapbox'&&MAPI.map.getSource('pl')){ const m=MAPI.map; m.fire('moveend'); }
+  if(!shared()&&!h0&&RER) RER();
+  window.addEventListener('hashchange',route);
+  if(qi.value) showSugg();
+  tables(); method();
+  dispatchEvent(new Event('usvb-ready'));
 })();
