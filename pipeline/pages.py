@@ -106,6 +106,30 @@ def faq_html(qas):
 
 PAGES = []
 
+# Standard GA4 tag, plus a delegated click listener for WhatsApp and email links.
+# Kept in the page template so the weekly rebuild writes it into every generated page.
+GTAG = '''
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QLGW0K3YY7"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QLGW0K3YY7');
+</script>
+<script>
+document.addEventListener('click', function (event) {
+  var a = event.target && event.target.closest && event.target.closest('a');
+  if (!a || !a.href) return;
+  var url = a.href, host = '';
+  try { host = new URL(url).hostname; } catch (err) { return; }
+  if (host === 'wa.me' || host === 'api.whatsapp.com') gtag('event', 'whatsapp_click', {link_url: url});
+  else if (url.indexOf('mailto:') === 0) gtag('event', 'email_click', {link_url: url});
+});
+</script>
+'''
+
 
 def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None, prio='0.6'):
     canon = SITE + path
@@ -113,7 +137,7 @@ def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None, prio='0.6')
              {"@type": "WebPage", "@id": canon, "url": canon, "name": title, "description": desc, "dateModified": META['date'], "inLanguage": "en-US",
               "isPartOf": {"@id": SITE + "#website"}, "publisher": {"@id": SITE + "#org"}}] + list(extra_ld)
     ld = {"@context": "https://schema.org", "@graph": graph}
-    out = f"""<!doctype html><html lang="en-US"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    out = f"""<!doctype html><html lang="en-US"><head>{GTAG}<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{e(title)}</title><meta name="description" content="{e(desc)}"><link rel="canonical" href="{canon}">
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
 <meta property="og:type" content="website"><meta property="og:site_name" content="US Land Value Book"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{SITE}og.png">
@@ -371,6 +395,8 @@ def main():
 
     # ---------------- index.html: structured data, facts block, verification
     idx = os.path.join(DOCS, 'index.html'); h = open(idx, encoding='utf-8').read()
+    if 'googletagmanager.com/gtag/js' not in h:
+        h = h.replace('<head>', '<head>' + GTAG, 1)
     ver = ''
     if CFG.get('google_site_verification'):
         ver += f'<meta name="google-site-verification" content="{e(CFG["google_site_verification"])}">'

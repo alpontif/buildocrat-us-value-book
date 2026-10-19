@@ -1,5 +1,25 @@
 <!doctype html>
-<html lang="en-US"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en-US"><head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QLGW0K3YY7"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QLGW0K3YY7');
+</script>
+<script>
+document.addEventListener('click', function (event) {
+  var a = event.target && event.target.closest && event.target.closest('a');
+  if (!a || !a.href) return;
+  var url = a.href, host = '';
+  try { host = new URL(url).hostname; } catch (err) { return; }
+  if (host === 'wa.me' || host === 'api.whatsapp.com') gtag('event', 'whatsapp_click', {link_url: url});
+  else if (url.indexOf('mailto:') === 0) gtag('event', 'email_click', {link_url: url});
+});
+</script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Buildocrat Value Lens (US) for Chrome</title>
 <meta name="description" content="A free Chrome extension that shows land, home and rental values as you hover over Google Maps or OpenStreetMap anywhere in the United States.">
 <link rel="canonical" href="https://valued.buildocrat.store/extension/">
