@@ -1,0 +1,125 @@
+17:27:28 ==> hpi
+17:27:29   downloaded hpi_county.xlsx 5.3 MB
+17:27:34   wrote raw/hpi_county__county.csv.gz 106256 rows
+17:27:35   downloaded hpi_zip5.xlsx 39.8 MB
+17:28:13   wrote raw/hpi_zip5__ZIP5.csv.gz 689537 rows
+17:28:14   downloaded hpi_state_q.txt 0.2 MB
+17:28:14   wrote raw/hpi_state_q.csv.gz 10505 rows
+17:28:14   downloaded hpi_po_monthly.xlsx 0.1 MB
+17:28:15   wrote raw/hpi_po_monthly__HPI_PO_monthly_hist.csv.gz 429 rows
+17:28:15   downloaded hpi_po_state_q.txt 0.3 MB
+17:28:15   wrote raw/hpi_po_state_q.csv.gz 7242 rows
+/home/runner/work/buildocrat-us-value-book/buildocrat-us-value-book/pipeline/fetch.py:538: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  RUN['fetched_' + k] = datetime.datetime.utcnow().isoformat(timespec='minutes') + ('' if k not in failed else ' FAILED')
+17:28:15 ==> fmr
+17:28:55   HUD page not read https://www.huduser.gov/portal/datasets/fmr.html: HTTP 202
+17:28:57   huduser.gov files not reachable; using HUD ArcGIS services
+17:28:58   wrote raw/fmrgis__Fair_Market_Rents_0.csv.gz 2622 rows
+17:29:06   wrote raw/fmrgis__HUD_PDR_Small_Area_Fair_Market_Rents_0.csv.gz 33791 rows
+17:29:15   wrote raw/fmrgis__HUD_PDR_Small_Area_Fair_Market_Rents_1.csv.gz 51895 rows
+17:29:15 ==> fhfa_land
+17:29:16   downloaded fhfa_land.xlsx 17.2 MB
+17:29:16   wrote raw/fhfa_land__Readme.csv.gz 10 rows
+17:29:23   wrote raw/fhfa_land__Panel_Census_Tracts.csv.gz 132628 rows
+17:29:27   wrote raw/fhfa_land__Panel_ZIP_Codes.csv.gz 95261 rows
+17:29:28   wrote raw/fhfa_land__Panel_Counties.csv.gz 11595 rows
+17:29:28   wrote raw/fhfa_land__Panel_CBSAs.csv.gz 6425 rows
+17:29:28   wrote raw/fhfa_land__Panel_States.csv.gz 562 rows
+17:29:28   wrote raw/fhfa_land__Panel_Nation.csv.gz 12 rows
+17:29:31   wrote raw/fhfa_land__Cross_Section_Census_Tracts.csv.gz 54516 rows
+17:29:32   wrote raw/fhfa_land__Cross_Section_ZIP_Codes.csv.gz 19398 rows
+17:29:32   wrote raw/fhfa_land__Cross_Section_Counties.csv.gz 2445 rows
+17:29:32   wrote raw/fhfa_land__Cross_Section_CBSAs.csv.gz 964 rows
+17:29:32   wrote raw/fhfa_land__Cross_Section_States.csv.gz 52 rows
+17:29:32   wrote raw/fhfa_land__Cross_Section_Nation.csv.gz 2 rows
+17:29:32   wrote raw/fhfa_land__Standardization_Parameters.csv.gz 2445 rows
+17:29:32 ==> nass
+17:29:37   downloaded nass_economics.txt.gz 584.4 MB
+17:30:53   wrote raw/nass_land.csv.gz 20456 rows
+17:30:53 ==> soc
+17:30:53   downloaded soc_contractpricesqft.xls 0.1 MB
+17:30:53   wrote raw/soc_contractpricesqft__ContractPriceSqFt.csv.gz 154 rows
+17:30:53   wrote raw/soc_contractpricesqft__ContractMedAvgPriceSqFt.csv.gz 56 rows
+17:30:54   downloaded soc_soldpricesqft.xls 0.1 MB
+17:30:54   wrote raw/soc_soldpricesqft__SoldPriceSqFt.csv.gz 153 rows
+17:30:54   wrote raw/soc_soldpricesqft__SoldPriceSqFtAttach.csv.gz 153 rows
+17:30:54   wrote raw/soc_soldpricesqft__SoldPriceSqFtDetach.csv.gz 153 rows
+17:30:54   wrote raw/soc_soldpricesqft__SoldPriceSqFtPR.csv.gz 113 rows
+17:30:54   wrote raw/soc_soldpricesqft__SoldMedAvgPPSF.csv.gz 51 rows
+17:30:54   wrote raw/soc_soldpricesqft__SoldMedAvgPPSFAttach.csv.gz 51 rows
+17:30:54   wrote raw/soc_soldpricesqft__SoldMedAvgPPSFDetach.csv.gz 51 rows
+17:30:54   downloaded soc_lotsize.xls 0.1 MB
+17:30:54   wrote raw/soc_lotsize__SFTotalLot.csv.gz 125 rows
+17:30:54   wrote raw/soc_lotsize__SFForSaleLot.csv.gz 125 rows
+17:30:54   wrote raw/soc_lotsize__SFContrLot.csv.gz 126 rows
+17:30:54   wrote raw/soc_lotsize__SFOwnerLot.csv.gz 126 rows
+17:30:54   wrote raw/soc_lotsize__SFTotalMedAvgLot.csv.gz 39 rows
+17:30:54   wrote raw/soc_lotsize__SFForSaleMedAvgLot.csv.gz 39 rows
+17:30:54   wrote raw/soc_lotsize__SFContrMedAvgLot.csv.gz 40 rows
+17:30:54   wrote raw/soc_lotsize__SFOwnerMedAvgLot.csv.gz 41 rows
+17:30:54   downloaded soc_squarefeet.xls 0.2 MB
+17:30:54   wrote raw/soc_squarefeet__SFTotalSqFt.csv.gz 170 rows
+17:30:54   wrote raw/soc_squarefeet__SFForSaleSqFt.csv.gz 171 rows
+17:30:54   wrote raw/soc_squarefeet__SFContrSqFt.csv.gz 171 rows
+17:30:54   wrote raw/soc_squarefeet__SFOwnerSqFt.csv.gz 171 rows
+17:30:54   wrote raw/soc_squarefeet__SFTotalMedAvgSqFt.csv.gz 75 rows
+17:30:54   wrote raw/soc_squarefeet__SFForSaleMedAvgSqFt.csv.gz 75 rows
+17:30:54   wrote raw/soc_squarefeet__SFContrMedAvgSqFt.csv.gz 75 rows
+17:30:54   wrote raw/soc_squarefeet__SFOwnerMedAvgSqFt.csv.gz 75 rows
+17:30:54   wrote raw/soc_squarefeet__SFTotalMedAvgSqFtFinance.csv.gz 75 rows
+17:30:54   wrote raw/soc_squarefeet__SFForSaleMedAvgSqFtFinance.csv.gz 75 rows
+17:30:54   wrote raw/soc_squarefeet__SFContrMedAvgSqFtFinance.csv.gz 71 rows
+17:30:54   wrote raw/soc_squarefeet__SFOwnerMedAvgSqFtFinance.csv.gz 71 rows
+17:30:54 done; failed: none
+
+==> model.py
+geography
+ counties 3144
+tracts
+ ACS tracts 85382 counties 3222 places 32330 zctas 33772
+price indexes
+ county index series 2795 ZIP series 19024
+ state quarterly index to (2026, 2)
+land prices
+ FHFA land: tracts 54515 ZIPs 19397 counties 2444
+ land elasticity to property value 2015-2022: 1.02
+ZIP code areas
+rents
+ HUD FMR counties 3212 ZIP codes 38601
+farmland
+ farmland: county census values 3076 state survey to 2026
+build cost
+ cost to build per sq ft 2025 {'NE': 179.3, 'MW': 194.09, 'S': 157.3, 'W': 176.87}
+tract values
+ tracts with survey data 84401
+ land-to-home-value elasticity within counties: 1.01 (51702 tracts)
+ land source per tract {'Z': 26744, 'T': 52499, 'C': 3404, 'M': 1754}
+ fit: county figure x home-value ratio within x2 of FHFA ZIP value for 93% of 16568 ZIPs
+aggregates
+places
+ places: Census 32071 ZIP 33791 OpenStreetMap {4: 50155, 5: 4947, 7: 115923, 8: 457} total 237195
+wrote counties.json 2.4 MB, places 3.8 MB, tracts 1.6 MB, evidence 1.1 MB, 385 ZIP tiles, 4195 city pages
+national median: land $8.50/sq ft, home $354,504, 2-bed $1,645
+
+==> sanity.py
+  Manhattan (New York County, NY): land $334.90/sq ft, home $1,260,000, 2-bed $3,700/mo
+  San Francisco, CA: land $205.20/sq ft, home $1,390,000, 2-bed $3,540/mo
+  Santa Clara County, CA: land $113.90/sq ft, home $1,520,000, 2-bed $3,700/mo
+  Washington, DC: land $56.20/sq ft, home $698,000, 2-bed $2,420/mo
+  Harris County, TX: land $6.39/sq ft, home $273,000, 2-bed $1,690/mo
+  Gove County, KS (rural): land $0.73/sq ft, home $136,000, 2-bed $880/mo
+  Burleigh County, ND: land $6.29/sq ft, home $349,000, 2-bed $1,230/mo
+week-on-week res: median x1.000, 0 counties beyond x1.6
+week-on-week hv: median x1.000, 0 counties beyond x1.6
+week-on-week rent2: median x1.000, 0 counties beyond x1.6
+sanity ok: 3144 counties
+
+==> pages.py
+pages: 7396 (4195 cities, 3144 counties, 51 states)
+
+==> build_extension.py
+extension 1.0.1 22496 bytes -> /home/runner/work/buildocrat-us-value-book/buildocrat-us-value-book/pipeline/../docs/extension/buildocrat-value-lens.zip
+cache-busted index.html
+service worker version 876651f672
+
+Refresh complete.

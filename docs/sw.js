@@ -2,7 +2,7 @@
    Pages and data: network first (so the weekly update shows straight away), cached copy when offline or slow.
    Scripts, icons, fonts, the map library: cached copy first, refreshed in the background.
    Mapbox map tiles are never stored; ZIP shape tiles are kept once looked at. */
-const VERSION = '8d0de15478';
+const VERSION = '876651f672';
 const SHELL = 'usvb-shell-' + VERSION;  // one cache per edition; the old one is deleted when a new edition activates
 const PRECACHE = ['/', '/app.js', '/config.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
   '/data/counties.json', '/data/places.bin', '/data/tracts.bin', '/data/evidence.json', '/offline.html'];
