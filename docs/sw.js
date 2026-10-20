@@ -4,9 +4,9 @@
    Data files are not precached. They are stored only after the page has actually used them,
    so a first visit does not download the whole book twice. Hashed files under /data/pkg/ never change,
    so a stored copy is reused. Mapbox map tiles are never stored; ZIP shape tiles are kept once looked at. */
-const VERSION = 'b0bc71a44e';
+const VERSION = 'c37af60ba5';
 const SHELL = 'usvb-shell-' + VERSION;  // one cache per edition; the old one is deleted when a new edition activates
-const PRECACHE = ['/', '/app.js', '/config.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/offline.html', '/map-preview.svg'];
+const PRECACHE = ['/', '/app.js', '/config.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/offline.html'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => Promise.all(PRECACHE.map(u => c.add(new Request(u, { cache: 'no-cache' })).catch(() => {})))));

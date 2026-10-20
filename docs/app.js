@@ -32,9 +32,9 @@ const $=id=>document.getElementById(id);
 const nfmt=n=>Number(n).toLocaleString('en-US');
 
 /* ---------- data ----------
-   The first view reads one small summary. County values, outlines, places, tracts and
-   published land prices are separate per-state files, fetched when a state is opened,
-   searched, or the map is actually shown. */
+   The first view is the HTML plus one small summary. The county choropleth is already
+   in that HTML. Exact outlines, places, tracts and published prices are separate
+   per-state files, fetched straight after first paint so a click does not wait. */
 let ST=[], LG=[], PL=null, TR=null, EV=[], META={}, BORDERS=[], FILES={};
 const STI={};
 const placeHave=new Set(), tractHave=new Set(), countyHave=new Set(), geomHave=new Set(), evHave=new Set();
@@ -43,8 +43,8 @@ let summaryPromise=null, geomAll=null, countyAll=null, citiesPromise=null, zipPr
 let mapPromise=null, mapReady=false;
 const pendingMap=[];
 function dataUrl(p){ p=String(p||'').replace(/^\//,''); return p.startsWith('data/')?p:'data/'+p; }
-async function fetchJSON(u){ const r=await fetch(u); if(!r.ok) throw new Error(u+' '+r.status); return r.json(); }
-async function gzbin(u){ const r=await fetch(u); if(!r.ok) throw new Error(u+' '+r.status); const buf=new Uint8Array(await r.arrayBuffer());
+async function fetchJSON(u, pri){ const r=await fetch(u, pri?{priority:pri}:{}); if(!r.ok) throw new Error(u+' '+r.status); return r.json(); }
+async function gzbin(u, pri){ const r=await fetch(u, pri?{priority:pri}:{}); if(!r.ok) throw new Error(u+' '+r.status); const buf=new Uint8Array(await r.arrayBuffer());
   if(buf[0]===0x1f&&buf[1]===0x8b){ const ds=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')); return JSON.parse(await new Response(ds).text()); }
   return JSON.parse(new TextDecoder().decode(buf)); }
 function undelta(a){ for(let j=1;j<a.length;j++) a[j]+=a[j-1]; return a; }
@@ -84,7 +84,7 @@ function onceState(kind, st, fn){
   return stateJobs.get(key);
 }
 async function loadSummary(){
-  const a=await gzbin(dataUrl(window.LB_SUMMARY||'data/pkg/summary.bin'));
+  const a=await gzbin(dataUrl(window.LB_SUMMARY||'data/pkg/summary.bin'), 'high');
   ST=a.states; META=a.meta; FILES=a.files||{};
   ST.forEach((s,i)=>STI[s.c]=i);
   for(const s of ST) derive(s.v,s.c);
@@ -100,7 +100,7 @@ function loadCities(){
   if(citiesPromise) return citiesPromise;
   citiesPromise=(async()=>{
     await summaryPromise;
-    const rows=await gzbin(dataUrl(FILES.cities));
+    const rows=await gzbin(dataUrl(FILES.cities), 'high');
     for(const c of rows){
       const [name,i,g,v,h,r,z,cf,la,lo]=c;
       if(placeHave.has(LG[g].s)) continue; // the full state file already has this city
@@ -113,7 +113,7 @@ function loadCities(){
 function loadCountyState(st){
   if(countyHave.has(st)) return Promise.resolve();
   return onceState('c', st, async()=>{
-    const d=await gzbin(dataUrl(FILES.c[st]));
+    const d=await gzbin(dataUrl(FILES.c[st]), 'high');
     d.rows.forEach((row,k)=>{
       const g=LG[d.b+k]; const rings=g.r;
       const [mi2,cb,nt,np,conf,lat,lng,cls,vals,zs]=row;
@@ -126,17 +126,17 @@ function loadCountyState(st){
 function loadGeomState(st){
   if(geomHave.has(st)) return Promise.resolve();
   return onceState('g', st, async()=>{
-    const d=await gzbin(dataUrl(FILES.g[st]));
+    const d=await gzbin(dataUrl(FILES.g[st]), 'high');
     d.r.forEach((rings,k)=>{ LG[d.b+k].r=rings; });
     if(d.border&&d.border.length) BORDERS.push({c:st,r:d.border});
-    geomHave.add(st); LGR=null;
+    geomHave.add(st); LGR=null; lastC=null;
     if(geomHave.size===ST.length&&FILES.borderOrder) BORDERS.sort((a,b)=>FILES.borderOrder.indexOf(a.c)-FILES.borderOrder.indexOf(b.c));
   });
 }
 function loadPlacesState(st){
   if(placeHave.has(st)) return Promise.resolve();
   return onceState('p', st, async()=>{
-    const d=await gzbin(dataUrl(FILES.p[st]));
+    const d=await gzbin(dataUrl(FILES.p[st]), 'low');
     const base=d.b, n=d.n.length;
     undelta(d.la); undelta(d.lo);
     for(let i=0;i<n;i++){
@@ -155,7 +155,7 @@ function loadPlacesState(st){
 function loadTractsState(st){
   if(tractHave.has(st)) return Promise.resolve();
   return onceState('t', st, async()=>{
-    const d=await gzbin(dataUrl(FILES.t[st]));
+    const d=await gzbin(dataUrl(FILES.t[st]), 'low');
     const base=d.b, n=d.g.length;
     undelta(d.la); undelta(d.lo);
     for(let i=0;i<n;i++){
@@ -170,7 +170,7 @@ function loadTractsState(st){
 function loadEvidenceState(st){
   if(evHave.has(st)) return Promise.resolve();
   return onceState('e', st, async()=>{
-    const rows=await gzbin(dataUrl(FILES.e[st]));
+    const rows=await gzbin(dataUrl(FILES.e[st]), 'low');
     for(const e of rows) EV.push([e[0],e[1],e[2],e[3],e[4],2015,st,e[5]]);
     EV.sort((a,b)=>(a[7]||0)-(b[7]||0));
     evHave.add(st);
@@ -179,12 +179,13 @@ function loadEvidenceState(st){
 function loadAllCountyValues(){ if(!countyAll) countyAll=Promise.all(ST.map(s=>loadCountyState(s.c))); return countyAll; }
 function loadAllGeom(){ if(!geomAll) geomAll=Promise.all(ST.map(s=>loadGeomState(s.c))); return geomAll; }
 function loadAllPlaces(){ return Promise.all(ST.map(s=>loadPlacesState(s.c))); }
+function loadAllTracts(){ return Promise.all(ST.map(s=>loadTractsState(s.c))); }
 function loadAllEvidence(){ return Promise.all(ST.map(s=>loadEvidenceState(s.c))); }
 function loadZipIndex(){
   if(zipPromise) return zipPromise;
   zipPromise=(async()=>{
     await summaryPromise;
-    const d=await gzbin(dataUrl(FILES.z));
+    const d=await gzbin(dataUrl(FILES.z), 'high');
     ZIPMETA=d;
     if(!ZIPI) ZIPI=new Map();
     for(const z in d) if(!ZIPI.has(z)) ZIPI.set(z, d[z][0]);
@@ -391,7 +392,7 @@ const CANVAS_MAP={ kind:'canvas', refresh:()=>draw(), fitAll:()=>fitAll(), fitLL
   flyPlace(la,lo,t){ const [X,Y]=W2(lo,la); const r=canvas.getBoundingClientRect(); view.s=Math.max(view.s, t<=1?600:1600); view.tx=r.width/2-X*view.s; view.ty=r.height/2-Y*view.s; draw(); },
   zoom(f){ const r=canvas.getBoundingClientRect(); zoomAt(f,r.width/2,r.height/2); },
   sat(la,lo){ this.flyPlace(la,lo,7); } };
-let MAPI=CANVAS_MAP;
+let MAPI=null;
 function unitOf(k){ return (LAYERS.find(l=>l[0]===k)||['','',''])[2]; }
 function fmtL(k,v){ return v==null||!isFinite(v)?'\u2013':k==='yld'||k==='lsh'?v.toFixed(1)+'%':k==='zone'?(META.zones||[])[v]||'\u2013':short(v); }
 function buildLayers(){
@@ -408,10 +409,10 @@ $('tabs').addEventListener('click',e=>{ const b=e.target.closest('[role=tab]'); 
 document.querySelectorAll('.tlead[data-tab]').forEach(b=>b.addEventListener('click',()=>{ setTab(b.dataset.tab); $('mapsec').scrollIntoView(); }));
 $('tabs').addEventListener('keydown',e=>{ if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return; const k=Object.keys(TABS); const n=k[(k.indexOf(TAB)+(e.key==='ArrowRight'?1:k.length-1))%k.length]; setTab(n); $('tabs').querySelector(`[data-t="${n}"]`).focus(); });
 function legend(){ const L=LAYERS.find(l=>l[0]===layer);
-  if(layer==='zone'){ $('legend').innerHTML=`<div>Price tiers (dots); counties by their most common tier</div><div class="zleg">${(META.zones||[]).map((z,i)=>`<span><i style="background:${ZONEC[i]}"></i>${esc(z)}</span>`).join('')}</div>`; return; }
+  if(layer==='zone'){ $('legend').innerHTML=`<div>Price tiers (dots); counties by their most common tier</div><div class="zleg">${(META.zones||[]).map((z,i)=>`<span><i style="background:${ZONEC[i]}"></i>${esc(z)}</span>`).join('')}</div>`; recolorSvg(); return; }
   const b=breaks[layer];
-  if(!b){ $('legend').innerHTML=`<div>${TABS[TAB].name}: ${L[1]}, ${L[2]} (county median)</div>`; return; }
-  $('legend').innerHTML=`<div>${TABS[TAB].name}: ${L[1]}, ${L[2]} (county median)</div><div class="row">${[0,1,2,3,4,5,6].map(i=>`<i style="background:var(--s${i})"></i>`).join('')}</div><div class="lab">${b.map(v=>`<span>${layer==='yld'||layer==='lsh'?v.toFixed(1):short(v).replace('$','')}</span>`).join('')}<span></span></div>`; }
+  if(!b){ $('legend').innerHTML=`<div>${TABS[TAB].name}: ${L[1]}, ${L[2]} (county median)</div>`; recolorSvg(); return; }
+  $('legend').innerHTML=`<div>${TABS[TAB].name}: ${L[1]}, ${L[2]} (county median)</div><div class="row">${[0,1,2,3,4,5,6].map(i=>`<i style="background:var(--s${i})"></i>`).join('')}</div><div class="lab">${b.map(v=>`<span>${layer==='yld'||layer==='lsh'?v.toFixed(1):short(v).replace('$','')}</span>`).join('')}<span></span></div>`; recolorSvg(); }
 function tipPlace(j){ const v=placeVals(j); return `<b>${esc(PL.n[j])}</b> <span class="muted">${TYPEN[PL.t[j]]}</span><br>${esc(LG[PL.g[j]].n)}, ${esc(LG[PL.g[j]].s)}<br><span class="num">${fmtL(layer,layer==='zone'?PL.z[j]:v[layer])}</span> ${layer==='zone'?'tier':unitOf(layer)}`; }
 function tipLGA(i){ const g=LG[i]; return `<b>${esc(g.n)}</b> <span class="muted">${g.s}</span><br>${esc(SC[g.s])} \u00b7 ${g.cls}<br><span class="num">${fmtL(layer,g.v[layer])}</span> ${layer==='zone'?'most common tier':unitOf(layer)} ${layer==='zone'?'':'median'}<br><span class="muted small">Click to value this exact spot</span>`; }
 
@@ -494,12 +495,28 @@ function spotValues(la,lo,i){ // value at any point: blend of the nearest census
   orderRents(v);
   return {v:derive(v,g.s),note,conf,nb};
 }
+let ptToken=0;
+function pendingPoint(la,lo,i){
+  const g=LG[i]; selL=i; selState=null; selPt=[la,lo]; CUR_ST=g.s; if(MAPI) MAPI.refresh();
+  $('panel').innerHTML=`${crumbs([['United States','us'],[SC[g.s],'s:'+g.s],[g.n,'l:'+i],['Pinned spot',null]])}
+   <div class="ptitle"><div><h3>Pinned spot</h3><div class="tags"><span class="tag">${esc(g.n)}, ${g.s}</span><span class="tag">${g.cls}</span></div></div></div>
+   ${valueBlock(g.v,'',`County median while the census tracts at this spot load. ${esc(g.n)} residential land is ${short(g.v.res)} per sq ft.`)}
+   ${actions(la,lo,g.s,true)}`;
+  setSel({kind:'point',name:'Pinned spot in '+g.n+', '+g.s,lat:la,lng:lo,st:g.s,v:g.v,conf:g.conf,provisional:true});
+}
 function selectPoint(la,lo,i){
+  if(!LG[i]) return;
   if(!areaReady(la,lo)||!evHave.has(LG[i].s)){
-    $('panel').innerHTML='<div class="loading">Loading census tracts and places\u2026</div>';
-    Promise.all([loadArea(la,lo),loadEvidenceState(LG[i].s)]).then(()=>selectPoint(la,lo,i));
+    pendingPoint(la,lo,i);
+    const token=++ptToken, st=LG[i].s;
+    Promise.all([loadArea(la,lo),loadEvidenceState(st)]).then(()=>{
+      if(token!==ptToken) return;
+      const i2=lgaContaining(la,lo);
+      selectPoint(la,lo,i2<0?i:i2);
+    });
     return;
   }
+  ptToken++;
   RER=()=>selectPoint(la,lo,i);
   const g=LG[i]; const {v,note,conf}=spotValues(la,lo,i);
   selL=i; selState=null; selPt=[la,lo]; CUR_ST=g.s; MAPI.refresh();
@@ -513,31 +530,43 @@ function selectPoint(la,lo,i){
   setSel({kind:'point',name:'Pinned spot in '+g.n+', '+g.s,lat:la,lng:lo,st:g.s,v,conf});
 }
 const LTYPES=[['','All places'],['0','Cities'],['1','Towns'],['2','Communities'],['3','ZIP codes'],['4','Neighborhoods'],['5','Villages'],['7','Subdivisions'],['8','Gated communities'],['6','Hamlets']];
+let lgaToken=0;
 function selectLGA(i,fly=true){
-  const st=LG[i].s;
-  if(!placeHave.has(st)||!countyHave.has(st)){
-    $('panel').innerHTML='<div class="loading">Loading places\u2026</div>';
-    Promise.all([loadPlacesState(st),loadCountyState(st),loadGeomState(st)]).then(()=>selectLGA(i,fly));
-    return;
-  }
-  RER=()=>selectLGA(i,false);
-  const g=LG[i]; selL=i; selState=null; selPt=null; CUR_ST=g.s;
-  if(fly) whenMap(()=>{ MAPI.fitLGA(i); MAPI.refresh(); }); else MAPI.refresh();
-  const hk=TABS[TAB].head;
-  const pl=[]; for(let j=0;j<PL.g.length;j++) if(PL.g[j]===i) pl.push(j);
-  const pv=new Map(pl.map(j=>[j,pval(j,hk)||0])); pl.sort((a,b)=>pv.get(b)-pv.get(a));
-  const note=TAB==='land'?`Built-up areas ${short(g.v.resU)}/sq ft, rural land ${short(g.v.resR)}/sq ft. Range across the county's tracts ${short(g.v.lo)} to ${short(g.v.hi)}/sq ft.`:`Median across ${esc(g.n)}; pick a place or a spot for its own figure.`;
-  $('panel').innerHTML=`${crumbs([['United States','us'],[SC[g.s],'s:'+g.s],[g.n,null]])}
-   <div class="ptitle"><div><h3>${esc(g.n)}</h3><div class="tags"><span class="tag ${g.cls==='Rural'?'':'u'}">${g.cls}</span><span class="tag">${esc(SC[g.s])}</span>${g.cb?`<span class="tag">${esc(g.cb)}</span>`:''}<span class="tag">${nfmt(g.mi2)} sq mi</span><span class="tag">${nfmt(g.nt)} tracts</span></div></div>${confPill(g.conf)}</div>
-   ${valueBlock(g.v,', county median',note)}
-   ${zoneTable(g.zs,'Price tiers in '+esc(g.n))}
-   <div><p class="eyebrow" style="margin-bottom:4px">Places in ${esc(g.n)} (${nfmt(pl.length)})</p>
+  const token=++lgaToken;
+  const paint=(full, doFly)=>{
+    if(token!==lgaToken||!LG[i]) return;
+    RER=()=>selectLGA(i,false);
+    const g=LG[i]; selL=i; selState=null; selPt=null; CUR_ST=g.s;
+    if(doFly) whenMap(()=>{ MAPI.fitLGA(i); MAPI.refresh(); }); else if(MAPI) MAPI.refresh();
+    const hk=TABS[TAB].head;
+    const note=full&&TAB==='land'?`Built-up areas ${short(g.v.resU)}/sq ft, rural land ${short(g.v.resR)}/sq ft. Range across the county's tracts ${short(g.v.lo)} to ${short(g.v.hi)}/sq ft.`:`Median across ${esc(g.n)}; pick a place or a spot for its own figure.`;
+    const tags=full?`<span class="tag ${g.cls==='Rural'?'':'u'}">${g.cls}</span><span class="tag">${esc(SC[g.s])}</span>${g.cb?`<span class="tag">${esc(g.cb)}</span>`:''}<span class="tag">${nfmt(g.mi2)} sq mi</span><span class="tag">${nfmt(g.nt)} tracts</span>`:`<span class="tag ${g.cls==='Rural'?'':'u'}">${esc(g.cls)}</span><span class="tag">${esc(SC[g.s])}</span>`;
+    let places='';
+    if(full&&PL){
+      const pl=[]; for(let j=0;j<PL.g.length;j++) if(PL.ok[j]&&PL.g[j]===i) pl.push(j);
+      const pv=new Map(pl.map(j=>[j,pval(j,hk)||0])); pl.sort((a,b)=>pv.get(b)-pv.get(a));
+      places=`<div><p class="eyebrow" style="margin-bottom:4px">Places in ${esc(g.n)} (${nfmt(pl.length)})</p>
    <div class="lgafilt"><input type="search" id="lgaPlaceQ" placeholder="Find a place in this county"><select id="lgaPlaceT" aria-label="Level">${LTYPES.map(([v,n])=>`<option value="${v}">${n}</option>`).join('')}</select></div>
    <table class="mini" id="lgaPlaces"></table></div>`;
-  const draw2=()=>{ const q=norm($('lgaPlaceQ').value), ty=$('lgaPlaceT').value; const rows=pl.filter(j=>(!q||norm(PL.n[j]).includes(q))&&(ty===''||PL.t[j]===+ty)).slice(0,80);
-    $('lgaPlaces').innerHTML=rows.map(j=>`<tr><td><button type="button" data-place="${j}">${esc(PL.n[j])}</button> <span class="muted small">${TYPEN[PL.t[j]]}</span></td><td class="r">${fmtL(hk,pv.get(j))}${TAB==='land'?'/sq ft':''}</td></tr>`).join('')||'<tr><td class="muted">No match.</td></tr>'; };
-  $('lgaPlaceQ').addEventListener('input',draw2); $('lgaPlaceT').addEventListener('input',draw2); draw2();
-  setSel({kind:'lga',name:g.n+', '+g.s,lat:g.lat,lng:g.lng,st:g.s,v:g.v,conf:g.conf});
+      $('panel').innerHTML=`${crumbs([['United States','us'],[SC[g.s],'s:'+g.s],[g.n,null]])}
+   <div class="ptitle"><div><h3>${esc(g.n)}</h3><div class="tags">${tags}</div></div>${confPill(g.conf)}</div>
+   ${valueBlock(g.v,', county median',note)}
+   ${zoneTable(g.zs,'Price tiers in '+esc(g.n))}
+   ${places}`;
+      const draw2=()=>{ const q=norm($('lgaPlaceQ').value), ty=$('lgaPlaceT').value; const rows=pl.filter(j=>(!q||norm(PL.n[j]).includes(q))&&(ty===''||PL.t[j]===+ty)).slice(0,80);
+        $('lgaPlaces').innerHTML=rows.map(j=>`<tr><td><button type="button" data-place="${j}">${esc(PL.n[j])}</button> <span class="muted small">${TYPEN[PL.t[j]]}</span></td><td class="r">${fmtL(hk,pv.get(j))}${TAB==='land'?'/sq ft':''}</td></tr>`).join('')||'<tr><td class="muted">No match.</td></tr>'; };
+      $('lgaPlaceQ').addEventListener('input',draw2); $('lgaPlaceT').addEventListener('input',draw2); draw2();
+    } else {
+      $('panel').innerHTML=`${crumbs([['United States','us'],[SC[g.s],'s:'+g.s],[g.n,null]])}
+   <div class="ptitle"><div><h3>${esc(g.n)}</h3><div class="tags">${tags}</div></div></div>
+   ${valueBlock(g.v,', county median',note)}
+   <p class="note">Opening the places in ${esc(g.n)}\u2026</p>`;
+    }
+    setSel({kind:'lga',idx:i,name:g.n+', '+g.s,lat:g.lat,lng:g.lng,st:g.s,v:g.v,conf:g.conf});
+  };
+  const st=LG[i].s, full=placeHave.has(st)&&countyHave.has(st);
+  paint(full, fly);
+  if(!full) Promise.all([loadPlacesState(st),loadCountyState(st),loadGeomState(st),loadEvidenceState(st)]).then(()=>paint(true, false)).catch(err=>console.error(err));
 }
 function selectState(c,fly=true){
   RER=()=>selectState(c,false);
@@ -800,9 +829,11 @@ function lgaContaining(lat,lng,quick){
 }
 function pickSpot(lat,lng,fly){
   if(!inUS(lat,lng)) return false;
-  const go=()=>{ const i=lgaContaining(lat,lng); if(i<0) return false; if(fly) whenMap(()=>MAPI.flyPlace(lat,lng,4)); selectPoint(lat,lng,i); return true; };
-  if(!areaReady(lat,lng)){ $('panel').innerHTML='<div class="loading">Loading census tracts and places\u2026</div>'; loadArea(lat,lng).then(()=>go()); return true; }
-  return go();
+  const i=lgaContaining(lat,lng);
+  if(i<0) return false;
+  if(fly) whenMap(()=>MAPI.flyPlace(lat,lng,4));
+  selectPoint(lat,lng,i);
+  return true;
 }
 
 /* ---------- ZIP code at the exact spot (Census ZCTA shapes, loaded by area) ---------- */
@@ -828,11 +859,12 @@ async function zipFill(){
 /* ---------- Mapbox GL satellite map ---------- */
 const NP=()=>window.LB_CONFIG||{};
 function loadMapbox(){ return new Promise((ok,no)=>{ if(window.mapboxgl) return ok();
-  const v='3.10.0', l=document.createElement('link'); l.rel='stylesheet'; l.href=`https://api.mapbox.com/mapbox-gl-js/v${v}/mapbox-gl.css`; document.head.appendChild(l);
-  const s=document.createElement('script'); s.src=`https://api.mapbox.com/mapbox-gl-js/v${v}/mapbox-gl.js`; s.onload=()=>ok(); s.onerror=no; document.head.appendChild(s); }); }
+  const v='3.10.0', l=document.createElement('link'); l.rel='stylesheet'; l.fetchPriority='high'; l.href=`https://api.mapbox.com/mapbox-gl-js/v${v}/mapbox-gl.css`; document.head.appendChild(l);
+  const s=document.createElement('script'); s.src=`https://api.mapbox.com/mapbox-gl-js/v${v}/mapbox-gl.js`; s.fetchPriority='high'; s.onload=()=>ok(); s.onerror=no; document.head.appendChild(s); }); }
 function MapboxMap(){
   const c=NP(); mapboxgl.accessToken=c.mapboxToken;
   const el=$('mbmap'); el.hidden=false; canvas.hidden=true; $('mapcard').classList.add('mb'); $('basemap').hidden=false;
+  const svg0=$('usmap'); if(svg0) svg0.classList.add('cover');
   const US=[[-125,24.4],[-66.8,49.5]];
   let sat=true, curLayer=null, selShown=-1, hoverShown=-1, marker=null, plTimer=0;
   const map=new mapboxgl.Map({container:el, style:c.styleSatellite||'mapbox://styles/mapbox/satellite-streets-v12', bounds:US, fitBoundsOptions:{padding:16}, maxBounds:[[-200,10],[-40,75]], projection:'mercator', attributionControl:true});
@@ -870,6 +902,8 @@ function MapboxMap(){
       'text-variable-anchor':['left','right','top','bottom'],'text-radial-offset':0.7,'text-justify':'auto','symbol-sort-key':['+',['*',['get','t'],10],['*',['get','e'],-5]],'text-optional':true,'text-max-width':10},
       paint:{'text-color':ink,'text-halo-color':halo,'text-halo-width':1.6}});
     curLayer=layer; selShown=-1; hoverShown=-1; api.refresh();
+    const svg=$('usmap'); if(svg) svg.hidden=true;
+    mark('mapHydrated');
   }
   map.on('style.load',addLayers);
   map.on('moveend',()=>{ clearTimeout(plTimer); plTimer=setTimeout(()=>{
@@ -932,65 +966,150 @@ function shared(){
   $('pinq').value=txt.slice(0,300); $('pinmsg').textContent='No coordinates found in what was shared. In Google Maps, drop a pin and share that pin, or paste the coordinates here.'; $('pinform').scrollIntoView({block:'center'}); return false;
 }
 
-/* ---------- map loads when it scrolls into view or Show map is tapped ---------- */
-function whenMap(fn){ if(mapReady) fn(); else { pendingMap.push(fn); requestMap(); } }
-function requestMap(){
-  if(mapPromise) return mapPromise;
-  const hold=$('maphold');
-  const btn=hold&&hold.querySelector('button');
-  if(btn) btn.textContent='Loading the map\u2026';
-  mapPromise=(async()=>{
-    await summaryPromise;
-    await Promise.all([loadAllGeom(), loadAllCountyValues(), loadCities()]);
-    buildPaths(); computeBreaks(); legend();
-    let usedBox=false;
-    if(NP().mapboxToken){
-      try{
-        await loadMapbox();
-        if(mapboxgl.supported&&!mapboxgl.supported()) throw new Error('WebGL unavailable');
-        MAPI=MapboxMap(); usedBox=true;
-      }catch(err){ console.warn('Mapbox unavailable, using the plain map', err); MAPI=CANVAS_MAP; }
-    }
-    if(!usedBox){
-      $('mbmap').hidden=true; canvas.hidden=false;
-      if(hold) hold.hidden=true;
-      resize(); fitAll();
-      if(!canvas._ro){ canvas._ro=1; new ResizeObserver(()=>resize()).observe(canvas); }
-    } else if(hold) hold.hidden=true;
-    mapReady=true;
-    pendingMap.splice(0).forEach(fn=>{ try{ fn(); }catch(err){ console.error(err); } });
-    if(MAPI.kind==='mapbox') MAPI.refresh();
-  })().catch(err=>{
-    console.error(err); mapPromise=null;
-    if(btn) btn.textContent='Show map';
-    $('panel').insertAdjacentHTML('beforeend','<p class="note">The map did not load. Reload the page to try again.</p>');
-  });
-  return mapPromise;
+/* ---------- the choropleth in the HTML is the map until exact outlines and Mapbox hydrate it ---------- */
+function mark(k){
+  window.__usvb=window.__usvb||{};
+  if(window.__usvb[k]!=null) return;
+  window.__usvb[k]=performance.now();
+  try{ performance.mark('usvb-'+k); }catch(err){}
+  document.documentElement.dataset[k]='1';
 }
-function armMap(){
-  const el=$('mapcard'); if(!el) return;
-  const go=()=>requestMap();
-  if('IntersectionObserver' in window){
-    const io=new IntersectionObserver(es=>{ if(es.some(e=>e.isIntersecting)){ io.disconnect(); go(); } },{threshold:0.2});
-    io.observe(el);
+function recolorSvg(){
+  const svg=$('usmap'); if(!svg||!LG.length) return;
+  if(!breaks[layer]&&layer!=='zone') return;
+  svg.querySelectorAll('path[data-i]').forEach(p=>{
+    const g=LG[+p.dataset.i]; if(!g) return;
+    const c=cls(layer,g.v[layer]);
+    p.style.fill=c<0?'var(--nd)':(layer==='zone'?ZONEC[c]:'var(--s'+Math.min(6,c)+')');
+  });
+}
+let vb=null, pendingPick=null, hydrated=false, boxFailed=false;
+function svgRatio(){ const r=$('usmap').getBoundingClientRect(); return r.width?r.height/r.width:0.78; }
+function paintVB(){ if(vb) $('usmap').setAttribute('viewBox', vb.x+' '+vb.y+' '+vb.w+' '+vb.h); }
+function svgHome(){ const p=$('usmap').dataset.view.split(' ').map(Number); vb={x:p[0],y:p[1],w:p[2],h:p[3]}; paintVB(); }
+function fitBoxSvg(x0,y0,x1,y1){
+  const pad=Math.max(14,(x1-x0)*0.14,(y1-y0)*0.14);
+  let w=(x1-x0)+2*pad, h=(y1-y0)+2*pad, ratio=svgRatio()||0.78;
+  if(w*ratio>h) h=w*ratio; else w=h/ratio;
+  vb={x:x0-pad,y:y0-pad,w,h}; paintVB();
+}
+function llToSvg(lat,lng){ const d=$('usmap').dataset; return [(lng*CX-+d.minx)*+d.k + +d.pad, (-lat-+d.miny)*+d.k + +d.pad]; }
+function fitState(c){
+  const paths=[...$('usmap').querySelectorAll('path[data-s="'+c+'"]')];
+  if(!paths.length){ svgHome(); return; }
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(const p of paths){ const b=p.getBBox(); if(b.x<x0)x0=b.x; if(b.y<y0)y0=b.y; if(b.x+b.width>x1)x1=b.x+b.width; if(b.y+b.height>y1)y1=b.y+b.height; }
+  fitBoxSvg(x0,y0,x1,y1);
+}
+function svgZoom(f,px,py){
+  const svg=$('usmap'), r=svg.getBoundingClientRect(); if(!vb) svgHome();
+  const home=svg.dataset.view.split(' ').map(Number);
+  const nw=Math.min(home[2]*1.2, Math.max(home[2]/70, vb.w/f));
+  const nh=nw*(vb.h/vb.w);
+  const ux=vb.x+(px/r.width)*vb.w, uy=vb.y+(py/r.height)*vb.h;
+  vb={x:ux-(px/r.width)*nw, y:uy-(py/r.height)*nh, w:nw, h:nh}; paintVB();
+}
+function movePin(){
+  const pin=$('mappin'); if(!pin) return;
+  if(!selPt){ pin.setAttribute('visibility','hidden'); return; }
+  const [x,y]=llToSvg(selPt[0],selPt[1]);
+  pin.setAttribute('cx',x); pin.setAttribute('cy',y); pin.setAttribute('visibility','visible');
+}
+const SVG_MAP={ kind:'svg',
+  refresh(){ const svg=$('usmap'); if(!svg) return;
+    svg.querySelectorAll('path.on,path.h').forEach(p=>p.classList.remove('on','h'));
+    if(hoverL>=0){ const p=svg.querySelector('path[data-i="'+hoverL+'"]'); if(p) p.classList.add('h'); }
+    if(selL>=0){ const p=svg.querySelector('path[data-i="'+selL+'"]'); if(p) p.classList.add('on'); }
+    movePin(); },
+  fitAll(){ svgHome(); },
+  fitLL(a,b,c,d){ if(selState) fitState(selState); else { const p=llToSvg(a,b), q=llToSvg(c,d); fitBoxSvg(Math.min(p[0],q[0]),Math.min(p[1],q[1]),Math.max(p[0],q[0]),Math.max(p[1],q[1])); } },
+  fitLGA(i){ const p=$('usmap').querySelector('path[data-i="'+i+'"]'); if(!p) return; const b=p.getBBox(); fitBoxSvg(b.x,b.y,b.x+b.width,b.y+b.height); },
+  flyPlace(la,lo,t){ const [x,y]=llToSvg(la,lo); const home=$('usmap').dataset.view.split(' ').map(Number); const w=home[2]/((t||4)<=1?5:12), h=w*(vb?vb.h/vb.w:svgRatio()); vb={x:x-w/2,y:y-h/2,w,h}; paintVB(); movePin(); },
+  zoom(f){ const r=$('usmap').getBoundingClientRect(); svgZoom(f,r.width/2,r.height/2); },
+  sat(la,lo){ this.flyPlace(la,lo); $('mapsec').scrollIntoView({block:'start'}); }
+};
+MAPI=SVG_MAP;
+function bindSvg(){
+  const svg=$('usmap'); if(!svg) return;
+  svgHome();
+  let drag=null, moved=false;
+  svg.addEventListener('pointerdown',e=>{ try{ svg.setPointerCapture(e.pointerId); }catch(err){} drag={x:e.clientX,y:e.clientY,id:e.pointerId}; moved=false; });
+  svg.addEventListener('pointermove',e=>{
+    const r=svg.getBoundingClientRect();
+    if(drag&&e.pointerId===drag.id){
+      const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag={x:e.clientX,y:e.clientY,id:drag.id};
+      if(Math.abs(dx)+Math.abs(dy)>3) moved=true;
+      if(moved&&vb){ vb.x-=dx/r.width*vb.w; vb.y-=dy/r.height*vb.h; paintVB(); tip.hidden=true; }
+      return;
+    }
+    const path=e.target.closest&&e.target.closest('path[data-i]');
+    const i=path?+path.dataset.i:-1;
+    if(i!==hoverL){ hoverL=i; SVG_MAP.refresh(); }
+    if(i>=0&&LG[i]){ tip.innerHTML=tipLGA(i); tip.hidden=false; const px=e.clientX-r.left, py=e.clientY-r.top; let x=px+14, y=py+12; if(x>r.width-250) x=px-250; if(y>r.height-90) y=py-80; tip.style.left=x+'px'; tip.style.top=y+'px'; }
+    else tip.hidden=true;
+  });
+  svg.addEventListener('pointerup',e=>{ const was=moved; drag=null; if(was||e.button>0) return;
+    const path=e.target.closest&&e.target.closest('path[data-i]'); if(!path) return;
+    const i=+path.dataset.i; if(!LG.length){ pendingPick=i; return; } selectLGA(i); });
+  svg.addEventListener('pointerleave',()=>{ tip.hidden=true; if(hoverL>=0){ hoverL=-1; SVG_MAP.refresh(); } });
+  svg.addEventListener('wheel',e=>{ e.preventDefault(); const r=svg.getBoundingClientRect(); svgZoom(e.deltaY<0?1.25:0.8, e.clientX-r.left, e.clientY-r.top); },{passive:false});
+  mapReady=true;
+}
+function whenMap(fn){ if(mapReady) fn(); else pendingMap.push(fn); }
+function useCanvas(){
+  if(hydrated) return;
+  buildPaths(); computeBreaks();
+  canvas.hidden=false; const svg=$('usmap'); if(svg) svg.hidden=true; $('mbmap').hidden=true;
+  MAPI=CANVAS_MAP; hydrated=true; mapReady=true;
+  resize();
+  if(selL>=0) MAPI.fitLGA(selL); else if(selState){ const b=ST[STI[selState]].bb; MAPI.fitLL(b[1],b[0],b[3],b[2]); } else MAPI.fitAll();
+  if(!canvas._ro){ canvas._ro=1; new ResizeObserver(()=>resize()).observe(canvas); }
+  MAPI.refresh(); mark('mapHydrated');
+}
+function tryHydrate(){
+  if(hydrated||!ST.length||geomHave.size!==ST.length) return;
+  if(NP().mapboxToken&&!boxFailed){
+    if(!window.mapboxgl) return;
+    try{
+      if(mapboxgl.supported&&!mapboxgl.supported()) throw new Error('WebGL unavailable');
+      buildPaths(); computeBreaks();
+      MAPI=MapboxMap(); hydrated=true; mapReady=true;
+      if(selL>=0) MAPI.fitLGA(selL); else if(selState){ const b=ST[STI[selState]].bb; MAPI.fitLL(b[1],b[0],b[3],b[2]); } else MAPI.fitAll();
+      MAPI.refresh();
+      return;
+    }catch(err){ console.warn('Mapbox unavailable, using the plain map', err); boxFailed=true; }
   }
-  const b=$('showmap'); if(b) b.addEventListener('click',go);
+  useCanvas();
+}
+function prefetchDetails(){
+  Promise.all([loadCities(), loadZipIndex()]).then(()=>mark('detailsReady')).catch(err=>console.error(err));
+  loadAllGeom().then(()=>tryHydrate()).catch(err=>console.error(err));
+  loadAllCountyValues().then(()=>{ computeBreaks(); legend(); if(MAPI) MAPI.refresh(); }).catch(()=>{});
+  loadAllEvidence().catch(()=>{});
+  loadAllPlaces().then(()=>mark('placesReady')).catch(err=>console.error(err));
+  loadAllTracts().catch(()=>{});
 }
 
 /* ---------- boot ---------- */
 (async()=>{
   readColors();
   buildLayers();
+  bindSvg();
+  if(NP().mapboxToken) loadMapbox().then(()=>tryHydrate()).catch(err=>{ console.warn(err); boxFailed=true; tryHydrate(); });
   summaryPromise=loadSummary();
-  armMap();
   try{ await summaryPromise; }catch(err){ console.error(err); $('panel').innerHTML='<p class="note">The data files did not load. Reload the page to try again.</p>'; return; }
+  computeBreaks(); legend();
   $('edDate').textContent=dlong(META.date); $('sDate').textContent=dlong(META.date);
   document.querySelectorAll('.evDate').forEach(e=>e.textContent=dlong(META.date));
   $('sCounties').textContent=nfmt(LG.length); $('hCounties').textContent=nfmt(LG.length); $('sTracts').textContent=nfmt(META.counts.tracts); $('sPlaces').textContent=nfmt(META.counts.places); $('hPlaces').textContent=nfmt(META.counts.places); $('sZips').textContent=nfmt(META.counts.zipPlaces||META.counts.zips); $('sEv').textContent=nfmt(META.counts.evidence||EV.length);
+  mark('mapInteractive');
+  if(pendingPick!=null){ const i=pendingPick; pendingPick=null; selectLGA(i); }
+  pendingMap.splice(0).forEach(fn=>{ try{ fn(); }catch(err){ console.error(err); } });
   const h0=location.hash;
   if(!h0||!route()) nationalPanel();
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors(); MAPI.refresh();});
-  new MutationObserver(()=>{readColors(); MAPI.refresh();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors(); if(MAPI) MAPI.refresh();});
+  new MutationObserver(()=>{readColors(); if(MAPI) MAPI.refresh();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  prefetchDetails();
   if(!shared()&&!h0&&RER) RER();
   window.addEventListener('hashchange',route);
   if(qi.value) showSugg();

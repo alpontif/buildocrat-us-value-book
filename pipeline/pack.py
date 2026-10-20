@@ -18,7 +18,7 @@ and the constant price-year column is dropped; the page still shows 2015.
 Also fills the headline numbers and the first page of each table into docs/index.html,
 names the summary with its content hash, and trims fonts and the analytics tag on every page.
 """
-import gzip, hashlib, json, os, re, shutil
+import gzip, hashlib, json, math, os, re, shutil
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DOCS = os.path.join(HERE, '..', 'docs')
@@ -367,6 +367,228 @@ def pager(page, pages, rows, noun):
             f'<button class="btn ghost sm" type="button" data-p="1" {nxt}>Next</button>')
 
 
+def _dp(pts, eps):
+    """Douglas-Peucker. pts are (x, y)."""
+    if len(pts) < 3:
+        return list(pts)
+
+    def rec(a, b):
+        ax, ay = pts[a]
+        bx, by = pts[b]
+        dx, dy = bx - ax, by - ay
+        den = (dx * dx + dy * dy) ** 0.5
+        if den < 1e-9:
+            return [pts[a]]
+        best, bi = 0.0, None
+        for i in range(a + 1, b):
+            x, y = pts[i]
+            d = abs(dy * (x - ax) - dx * (y - ay)) / den
+            if d > best:
+                best, bi = d, i
+        if bi is None or best <= eps:
+            return [pts[a], pts[b]]
+        return rec(a, bi)[:-1] + rec(bi, b)
+
+    return rec(0, len(pts) - 1)
+
+
+def _decode_ring(enc):
+    out, x, y = [], 0, 0
+    for p in enc.split(' '):
+        k = p.index(',')
+        x += int(p[:k])
+        y += int(p[k + 1:])
+        out.append((x / 1000.0, y / 1000.0))
+    return out
+
+
+def _sig(n, d=2):
+    if not n:
+        return n
+    p = 10 ** (math.floor(math.log10(n)) - d + 1)
+    return js_round(n / p) * p
+
+
+def _res_breaks(counties):
+    vals = sorted(c['v']['res'] for c in counties if c['v'].get('res'))
+    breaks = []
+    for f in (0.2, 0.42, 0.62, 0.78, 0.9, 0.97):
+        sv = _sig(vals[int(len(vals) * f)], 2)
+        if not breaks or sv > breaks[-1]:
+            breaks.append(sv)
+
+    def cls(v):
+        if not v or v <= 0:
+            return -1
+        i = 0
+        while i < len(breaks) and v >= breaks[i]:
+            i += 1
+        return i
+
+    return cls
+
+
+def county_svg(counties):
+    """A simplified choropleth of every county, small enough to sit in the HTML.
+
+    Exact outlines still ship in the per-state geometry files and replace this
+    drawing once they arrive. Fills use the same residential-land classes as the
+    live legend, so the first paint and the hydrated map agree.
+    """
+    CX = math.cos(math.radians(38))
+    cls = _res_breaks(counties)
+
+    def proj(lng, lat):
+        return lng * CX, -lat
+
+    main, remote = [], []
+    xs, ys = [], []
+    for i, c in enumerate(counties):
+        rings = [_decode_ring(e) for e in c['r']]
+        if c['s'] in ('AK', 'HI'):
+            remote.append((i, c, rings))
+        else:
+            main.append((i, c, rings))
+            for ring in rings:
+                for lng, lat in ring:
+                    x, y = proj(lng, lat)
+                    xs.append(x)
+                    ys.append(y)
+    minx, maxx, miny, maxy = min(xs), max(xs), min(ys), max(ys)
+    W, H, pad = 1000, 640, 8
+    scale = min((W - 2 * pad) / (maxx - minx), (H - 2 * pad) / (maxy - miny))
+
+    def xy(lng, lat):
+        x, y = proj(lng, lat)
+        return (x - minx) * scale + pad, (y - miny) * scale + pad
+
+    def path_d(rings, to_px, eps=2.0):
+        parts = []
+        for ring in rings:
+            pts = ring[:-1] if len(ring) > 1 and ring[0] == ring[-1] else ring
+            pix = [to_px(lng, lat) for lng, lat in pts]
+            simp = _dp(pix, eps)
+            if len(simp) < 3:
+                step = max(1, len(pix) // 12)
+                simp = pix[::step]
+            cmd, prev = [], None
+            for k, (x, y) in enumerate(simp):
+                pt = (int(round(x)), int(round(y)))
+                if pt == prev:
+                    continue
+                cmd.append(('M' if not cmd else 'L') + '%d %d' % pt)
+                prev = pt
+            if len(cmd) >= 3:
+                cmd.append('Z')
+                parts.append(''.join(cmd))
+        return ' '.join(parts)
+
+    paths = []
+    for i, c, rings in main:
+        d = path_d(rings, xy)
+        if not d:
+            x, y = xy(c['lng'], c['lat'])
+            x, y = int(round(x)), int(round(y))
+            d = 'M%d %dL%d %dL%d %dL%d %dZ' % (x - 3, y, x, y - 3, x + 3, y, x, y + 3)
+        k = cls(c['v'].get('res'))
+        fill = 'var(--nd)' if k < 0 else 'var(--s%d)' % min(6, k)
+        paths.append('<path class="county" data-i="%d" data-s="%s" d="%s" style="fill:%s"/>' % (i, c['s'], d, fill))
+
+    # Alaska and Hawaii sit in a strip under the lower 48, the way the national view always has.
+    insets = {'AK': (18, 652, 210, 108), 'HI': (250, 668, 150, 86)}
+    for i, c, rings in remote:
+        box = insets[c['s']]
+        rx, ry = [], []
+        for ring in rings:
+            for lng, lat in ring:
+                x, y = proj(lng, lat)
+                rx.append(x)
+                ry.append(y)
+        if not rx:
+            continue
+        bw, bh, bpad = box[2], box[3], 4
+        sc = min((bw - 2 * bpad) / (max(rx) - min(rx) or 1), (bh - 2 * bpad) / (max(ry) - min(ry) or 1))
+        ox, oy = min(rx), min(ry)
+
+        def to_px(lng, lat, box=box, sc=sc, ox=ox, oy=oy):
+            x, y = proj(lng, lat)
+            return box[0] + bpad + (x - ox) * sc, box[1] + bpad + (y - oy) * sc
+
+        d = path_d(rings, to_px, 1.1)
+        if not d:
+            x, y = to_px(c['lng'], c['lat'])
+            x, y = int(round(x)), int(round(y))
+            d = 'M%d %dL%d %dL%d %dL%d %dZ' % (x - 3, y, x, y - 3, x + 3, y, x, y + 3)
+        k = cls(c['v'].get('res'))
+        fill = 'var(--nd)' if k < 0 else 'var(--s%d)' % min(6, k)
+        paths.append('<path class="county" data-i="%d" data-s="%s" d="%s" style="fill:%s"/>' % (i, c['s'], d, fill))
+
+    borders = json.load(open(os.path.join(DATA, 'counties.json')))['borders']
+    edges = []
+    for b in borders:
+        if b['c'] in ('AK', 'HI'):
+            continue
+        d = path_d([_decode_ring(e) for e in b['r']], xy, 2.4)
+        if d:
+            edges.append(d)
+    edge = '<path class="stateedge" d="%s"/>' % ' '.join(edges) if edges else ''
+    svg = (
+        '<svg id="usmap" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 780" data-view="0 0 1000 780" '
+        'data-minx="%s" data-miny="%s" data-k="%s" data-pad="%s" role="group" '
+        'aria-label="United States counties shaded by residential land value">%s%s'
+        '<circle id="mappin" r="4.5" fill="var(--pin)" stroke="#fff" stroke-width="1.2" pointer-events="none" visibility="hidden"/>'
+        '</svg>' % (repr(minx), repr(miny), repr(scale), pad, ''.join(paths), edge)
+    )
+    mark = ('<script>window.__usvb=window.__usvb||{};if(window.__usvb.mapVisible==null){window.__usvb.mapVisible=performance.now();'
+            'performance.mark("usvb-mapVisible");}document.documentElement.dataset.mapvisible="1";</script>')
+    return svg + mark
+
+
+USMAP_CSS = (
+    '#usmap{display:block;width:100%;height:min(74vh,720px);background:var(--sea);touch-action:none;cursor:crosshair}'
+    '#usmap[hidden]{display:none !important}'
+    '#usmap.cover{position:absolute;inset:0;z-index:4;height:100%}'
+    '#usmap .county{stroke:rgba(90,98,168,.45);stroke-width:.7;vector-effect:non-scaling-stroke}'
+    '#usmap .county.h{stroke:var(--sel);stroke-width:1.6}'
+    '#usmap .county.on{stroke:var(--sel);stroke-width:2.4}'
+    '#usmap .stateedge{fill:none;stroke:var(--sedge);stroke-width:1.2;pointer-events:none;vector-effect:non-scaling-stroke}'
+    '#map[hidden]{display:none !important}'
+)
+MAPBOX_PRELOAD = (
+    '<link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js" fetchpriority="high">\n'
+    '<link rel="preload" as="style" href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css">\n'
+)
+MAPHOLD_CSS = (
+    '.maphold{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:28px;'
+    'background:#d9def3 url("/map-preview.svg") center/cover no-repeat}'
+    '.maphold p{margin:0;max-width:40ch;font-weight:600;color:var(--navy);background:color-mix(in srgb,var(--surface) 90%,transparent);padding:12px 16px;border-radius:14px}'
+)
+
+
+def install_immediate_map(html, counties):
+    """Put the choropleth in the first HTML response and drop the Show map gate."""
+    block = '<!--APP:MAP-->' + county_svg(counties) + '<!--/APP:MAP-->'
+    html = re.sub(r'\n\s*<div class="maphold" id="maphold">.*?</div>', '', html, count=1, flags=re.S)
+    if '<!--APP:MAP-->' in html:
+        html = re.sub(r'<!--APP:MAP-->.*?<!--/APP:MAP-->', lambda m: block, html, count=1, flags=re.S)
+    else:
+        html = html.replace('<canvas id="map"', block + '\n        <canvas id="map"', 1)
+    html = html.replace('<canvas id="map"', '<canvas id="map" hidden', 1)
+    html = html.replace('<canvas id="map" hidden hidden', '<canvas id="map" hidden')
+    if MAPHOLD_CSS in html:
+        html = html.replace(MAPHOLD_CSS, USMAP_CSS)
+    elif '#usmap{' not in html:
+        html = html.replace('section{padding-block:44px 8px}', USMAP_CSS + 'section{padding-block:44px 8px}', 1)
+    if 'rel="preconnect" href="https://api.mapbox.com"' not in html:
+        html = html.replace(
+            '<link rel="preconnect" href="https://fonts.googleapis.com">',
+            '<link rel="preconnect" href="https://api.mapbox.com" crossorigin>\n<link rel="preconnect" href="https://fonts.googleapis.com">',
+            1)
+    if 'mapbox-gl.js" fetchpriority="high"' not in html:
+        html = html.replace('<script src="config.js', MAPBOX_PRELOAD + '<script src="config.js', 1)
+    return html
+
+
 def prerender(ctx):
     meta, states, counties = ctx['meta'], ctx['states'], ctx['counties']
     build = meta['build']
@@ -509,11 +731,6 @@ def prerender(ctx):
                             '<div class="cols" id="methodcols"><!--APP:METHOD--><!--/APP:METHOD--></div>', 1)
         html = html.replace('<script src="config.js',
                             '<!--APP:DATA--><!--/APP:DATA-->\n<script src="config.js', 1)
-        if 'id="maphold"' not in html:
-            html = html.replace(
-                '<canvas id="map"',
-                '<div class="maphold" id="maphold"><p>The satellite map loads when you scroll to it or tap Show map, so these values appear first.</p><button class="btn" type="button" id="showmap">Show map</button></div>\n        <canvas id="map"',
-                1)
 
     stats = (
         f'<div class="stats" id="stats">'
@@ -534,21 +751,16 @@ def prerender(ctx):
     html = put_marked(html, 'PPAGER', pager(0, ppages, len(order), 'places'))
     html = put_marked(html, 'ETABLE', e_head + '<tbody>' + ''.join(e_body) + '</tbody>')
     html = put_marked(html, 'EPAGER', pager(0, epages, len(ev), 'rows'))
-    html = put_marked(html, 'DATA', f'\n<script>window.LB_SUMMARY="data/{ctx["summary"]}";</script>\n')
+    html = put_marked(html, 'DATA',
+                       f'\n<link rel="preload" as="fetch" href="data/{ctx["summary"]}" fetchpriority="high">\n'
+                       f'<script>window.LB_SUMMARY="data/{ctx["summary"]}";</script>\n')
 
     html = re.sub(r'(<p class="kicker">US Land Value Book, week of <span id="edDate">)[^<]*(</span>)',
                   rf'\g<1>{date}\g<2>', html, count=1)
     html = re.sub(r'(<span class="evDate">)[^<]*(</span>)', rf'\g<1>{date}\g<2>', html)
     html = re.sub(r'(<span id="hCounties">)[^<]*(</span>)', rf'\g<1>{nfmt(len(counties))}\g<2>', html)
     html = re.sub(r'(<span id="hPlaces">)[^<]*(</span>)', rf'\g<1>{nfmt(meta["counts"]["places"])}\g<2>', html)
-    html = html.replace('<link rel="preconnect" href="https://api.mapbox.com" crossorigin>\n', '')
-    if '.maphold{' not in html:
-        html = html.replace(
-            'section{padding-block:44px 8px}',
-            '.maphold{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:28px;'
-            'background:#d9def3 url("/map-preview.svg") center/cover no-repeat}'
-            '.maphold p{margin:0;max-width:40ch;font-weight:600;color:var(--navy);background:color-mix(in srgb,var(--surface) 90%,transparent);padding:12px 16px;border-radius:14px}'
-            'section{padding-block:44px 8px}', 1)
+    html = install_immediate_map(html, counties)
     open(idx, 'w', encoding='utf-8').write(html)
     write_preview(ctx)
     print('prerendered index.html', date)
