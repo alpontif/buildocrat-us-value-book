@@ -24,7 +24,7 @@ os.makedirs(os.path.join(HERE, 'out'), exist_ok=True)
 prev = os.path.join(DOCS, 'data', 'counties.json')
 if os.path.exists(prev):
     shutil.copy(prev, os.path.join(HERE, 'out', 'prev_counties.json'))
-for s in ('model.py', 'sanity.py', 'pages.py', 'build_extension.py'):
+for s in ('model.py', 'sanity.py', 'pages.py', 'pack.py', 'build_extension.py'):
     run(s)
 
 # browser config (public keys only)

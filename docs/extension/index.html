@@ -1,13 +1,17 @@
 <!doctype html>
 <html lang="en-US"><head>
 <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-QLGW0K3YY7"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-
   gtag('config', 'G-QLGW0K3YY7');
+  window.addEventListener('load', function () {
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-QLGW0K3YY7';
+    document.head.appendChild(s);
+  });
 </script>
 <script>
 document.addEventListener('click', function (event) {
@@ -23,7 +27,7 @@ document.addEventListener('click', function (event) {
 <title>Buildocrat Value Lens (US) for Chrome</title>
 <meta name="description" content="A free Chrome extension that shows land, home and rental values as you hover over Google Maps or OpenStreetMap anywhere in the United States.">
 <link rel="canonical" href="https://valued.buildocrat.store/extension/">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1D2675"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1D2675"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <style>
 :root{--bg:#EFEFF3;--surface:#fff;--ink:#22275A;--muted:#5E638E;--line:#D3D6EA;--navy:#1D2675;--lav:#DCDFF2}
 @media (prefers-color-scheme:dark){:root{--bg:#0F1234;--surface:#171B47;--ink:#E7E9FA;--muted:#A3A8D6;--line:#2C3270;--navy:#C9CEFF;--lav:#252B66;color-scheme:dark}}

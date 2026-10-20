@@ -1,11 +1,12 @@
 /* Buildocrat US Land Value Book: service worker. Makes the site installable and usable offline with the last week's values.
-   Pages and data: network first (so the weekly update shows straight away), cached copy when offline or slow.
+   Pages: network first (so the weekly update shows straight away), cached copy when offline or slow.
    Scripts, icons, fonts, the map library: cached copy first, refreshed in the background.
-   Mapbox map tiles are never stored; ZIP shape tiles are kept once looked at. */
-const VERSION = '876651f672';
+   Data files are not precached. They are stored only after the page has actually used them,
+   so a first visit does not download the whole book twice. Hashed files under /data/pkg/ never change,
+   so a stored copy is reused. Mapbox map tiles are never stored; ZIP shape tiles are kept once looked at. */
+const VERSION = 'b0bc71a44e';
 const SHELL = 'usvb-shell-' + VERSION;  // one cache per edition; the old one is deleted when a new edition activates
-const PRECACHE = ['/', '/app.js', '/config.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
-  '/data/counties.json', '/data/places.bin', '/data/tracts.bin', '/data/evidence.json', '/offline.html'];
+const PRECACHE = ['/', '/app.js', '/config.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/offline.html', '/map-preview.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => Promise.all(PRECACHE.map(u => c.add(new Request(u, { cache: 'no-cache' })).catch(() => {})))));
@@ -47,6 +48,16 @@ self.addEventListener('fetch', e => {
     if (req.mode === 'navigate') {
       e.respondWith(networkFirst(req, 4500, e.preloadResponse).catch(async () =>
         (await cached(req)) || (url.pathname === '/' ? null : await cached(new Request('/offline.html'))) || (await cached(new Request('/'))) || Response.error()));
+      return;
+    }
+    // content-hashed chunks are immutable; keep the copy from the first time they were used
+    if (url.pathname.startsWith('/data/pkg/')) {
+      e.respondWith((async () => {
+        const hit = await cached(req);
+        if (hit) return hit;
+        const res = await fetch(req);
+        return put(req, res);
+      })());
       return;
     }
     if (url.pathname.startsWith('/data/') && !url.pathname.endsWith('.csv')) { e.respondWith(networkFirst(req, 8000).catch(() => cached(req).then(r => r || Response.error()))); return; }
