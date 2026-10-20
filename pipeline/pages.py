@@ -110,13 +110,17 @@ PAGES = []
 # Kept in the page template so the weekly rebuild writes it into every generated page.
 GTAG = '''
 <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-QLGW0K3YY7"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-
   gtag('config', 'G-QLGW0K3YY7');
+  window.addEventListener('load', function () {
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-QLGW0K3YY7';
+    document.head.appendChild(s);
+  });
 </script>
 <script>
 document.addEventListener('click', function (event) {
@@ -143,7 +147,7 @@ def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None, prio='0.6')
 <meta property="og:type" content="website"><meta property="og:site_name" content="US Land Value Book"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{SITE}og.png">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{e(title)}"><meta name="twitter:description" content="{e(desc)}"><meta name="twitter:image" content="{SITE}og.png">
 <link rel="alternate" type="text/plain" title="LLM summary" href="/llms.txt">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1D2675"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="US Land Values"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script><link rel="stylesheet" href="/page.css?v={CSSV}"></head><body><div class="w">
 <header><a href="/"><b>Buildocrat US Land Value Book</b></a><nav>{' › '.join(f'<a href="/{u}">{e(n)}</a>' for n, u in crumbs[:-1])}</nav><button class="inst" type="button" data-install hidden>Install app</button></header>
